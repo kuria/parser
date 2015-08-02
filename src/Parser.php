@@ -133,7 +133,7 @@ abstract class Parser
      * @param int  $offset   relative offset, can be negative
      * @param bool $absolute treat $offset as an absolute position 1/0
      * @throws ParserException when navigating beyond available boundaries
-     * @return Parser
+     * @return static
      */
     public function seek($offset, $absolute = false)
     {
@@ -180,7 +180,7 @@ abstract class Parser
     /**
      * Reset state
      *
-     * @return Parser
+     * @return static
      */
     public function reset()
     {
@@ -193,7 +193,7 @@ abstract class Parser
     /**
      * Rewind to the beginning
      *
-     * @return Parser
+     * @return static
      */
     abstract public function rewind();
 
@@ -581,11 +581,11 @@ abstract class Parser
     }
 
     /**
-     * Store current state
+     * Store the current state
      *
      * Don't forget to revertState() or popState() when you are done.
      *
-     * @return Parser
+     * @return static
      */
     public function pushState()
     {
@@ -595,10 +595,10 @@ abstract class Parser
     }
 
     /**
-     * Revert to last stored state and pop it
+     * Revert to the last stored state and pop it
      *
      * @throws \RuntimeException if no states are active
-     * @return Parser
+     * @return static
      */
     public function revertState()
     {
@@ -612,10 +612,10 @@ abstract class Parser
     }
 
     /**
-     * Pop last stored state without reverting to it
+     * Pop the last stored state without reverting to it
      *
      * @throws \RuntimeException if no states are active
-     * @return Parser
+     * @return static
      */
     public function popState()
     {
@@ -629,7 +629,7 @@ abstract class Parser
     /**
      * Throw away all stored states
      *
-     * @return Parser
+     * @return static
      */
     public function clearStates()
     {
@@ -642,7 +642,7 @@ abstract class Parser
      * Ensure that we are at the end
      *
      * @throws ParserException if the current position is not the end
-     * @return Parser
+     * @return static
      */
     public function expectEnd()
     {
@@ -657,7 +657,7 @@ abstract class Parser
      * Ensure that we are not at the end
      *
      * @throws ParserException if the current position is the end
-     * @return Parser
+     * @return static
      */
     public function expectNotEnd()
     {
@@ -673,7 +673,7 @@ abstract class Parser
      *
      * @param string $expectedChar expected character
      * @throws ParserException if the expectation is not met
-     * @return Parser
+     * @return static
      */
     public function expectChar($expectedChar)
     {
@@ -689,7 +689,7 @@ abstract class Parser
      *
      * @param int $expectedType the type to expect (see Parser::CHAR_* constants)
      * @throws ParserException if the expectation is not met
-     * @return Parser
+     * @return static
      */
     public function expectCharType($expectedType)
     {
