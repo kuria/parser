@@ -3,7 +3,7 @@
 namespace Kuria\Parser;
 
 /**
- * Parser class
+ * Base parser
  *
  * @author ShiraNai7 <shira.cz>
  */

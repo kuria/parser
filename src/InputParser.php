@@ -6,7 +6,7 @@ use Kuria\Parser\Input\Input;
 use Kuria\Parser\Input\MemoryInput;
 
 /**
- * Input parser
+ * Parser with input abstraction
  *
  * @author ShiraNai7 <shira.cz>
  */
