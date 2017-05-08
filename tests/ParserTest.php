@@ -151,6 +151,8 @@ abstract class ParserTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider provideCharTypes
+     * @param int $type
+     * @param string $expectedName
      */
     public function testCharTypeName($type, $expectedName)
     {
@@ -180,6 +182,8 @@ abstract class ParserTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider provideEolSamples
+     * @param string $testString
+     * @param string $expectedEol
      */
     public function testDetectEol($testString, $expectedEol)
     {
@@ -316,6 +320,9 @@ abstract class ParserTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider provideEatTypeSamples
+     * @param int $type
+     * @param string $data
+     * @param string $expectedOutput
      */
     public function testEatType($type, $data, $expectedOutput)
     {

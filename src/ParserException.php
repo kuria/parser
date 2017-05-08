@@ -52,7 +52,7 @@ class ParserException extends \RuntimeException
      */
     public static function createForCurrentState(Parser $parser, $message, $code = 0, \Exception $previous = null)
     {
-        return self::createForLineAndOffset($parser->line, $parser->i, $message, $code, $previous);
+        return static::createForLineAndOffset($parser->line, $parser->i, $message, $code, $previous);
     }
 
     /**

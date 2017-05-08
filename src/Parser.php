@@ -309,7 +309,7 @@ abstract class Parser
         while (!$this->end) {
             // check type
             if (
-                self::CHAR_WS !== $this->charTypeMap[$this->char]
+                static::CHAR_WS !== $this->charTypeMap[$this->char]
                 || !$newlines && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)
             ) {
                 break;
@@ -436,7 +436,7 @@ abstract class Parser
     protected function buildCharTypeMap()
     {
         $charMap = array(
-            '' => self::CHAR_NONE, // special case for NULL
+            '' => static::CHAR_NONE, // special case for NULL
         );
 
         $wsMap = $this->getWhitespaceMap();
@@ -444,15 +444,15 @@ abstract class Parser
 
         foreach ($this->getCharMap() as $ord => $char) {
             if ($ord > 64 && $ord < 91 || $ord > 96 && $ord < 123 || $ord > 126 || isset($idtExtraMap[$char])) {
-                $type = self::CHAR_IDT;
+                $type = static::CHAR_IDT;
             } elseif ($ord > 47 && $ord < 58) {
-                $type = self::CHAR_NUM;
+                $type = static::CHAR_NUM;
             } elseif (isset($wsMap[$char])) {
-                $type = self::CHAR_WS;
+                $type = static::CHAR_WS;
             } elseif ($ord > 31) {
-                $type = self::CHAR_CTRL;
+                $type = static::CHAR_CTRL;
             } else {
-                $type = self::CHAR_OTHER;
+                $type = static::CHAR_OTHER;
             }
 
             $charMap[$char] = $type;
@@ -526,12 +526,12 @@ abstract class Parser
     public function charTypeName($type)
     {
         switch ($type) {
-            case self::CHAR_NONE: return 'CHAR_NONE';
-            case self::CHAR_WS: return 'CHAR_WS';
-            case self::CHAR_NUM: return 'CHAR_NUM';
-            case self::CHAR_IDT: return 'CHAR_IDT';
-            case self::CHAR_CTRL: return 'CHAR_CTRL';
-            case self::CHAR_OTHER: return 'CHAR_OTHER';
+            case static::CHAR_NONE: return 'CHAR_NONE';
+            case static::CHAR_WS: return 'CHAR_WS';
+            case static::CHAR_NUM: return 'CHAR_NUM';
+            case static::CHAR_IDT: return 'CHAR_IDT';
+            case static::CHAR_CTRL: return 'CHAR_CTRL';
+            case static::CHAR_OTHER: return 'CHAR_OTHER';
             default: throw new \InvalidArgumentException('Invalid char type');
         }
     }
@@ -539,6 +539,8 @@ abstract class Parser
     /**
      * Find and return the next end of line
      * The scan will not change current state of the parser.
+     *
+     * @return string
      */
     public function detectEol()
     {
@@ -713,7 +715,7 @@ abstract class Parser
 
         // add expectations
         if (null !== $expected) {
-            $message .= ', expected ' . self::formatExceptionOptions($expected);
+            $message .= ', expected ' . static::formatExceptionOptions($expected);
         }
 
         // throw
@@ -740,7 +742,7 @@ abstract class Parser
 
         // add expectations
         if (null !== $expected) {
-            $message .= ', expected ' . self::formatExceptionOptions($expected);
+            $message .= ', expected ' . static::formatExceptionOptions($expected);
         }
 
         // throw
@@ -760,7 +762,7 @@ abstract class Parser
 
         // prepare message
         $message = 'Unexpected ' . $this->charTypeName($type);
-        if (null !== $this->char && self::CHAR_OTHER !== $type) {
+        if (null !== $this->char && static::CHAR_OTHER !== $type) {
             $message .= " (\"{$this->char}\")";
         }
 
@@ -770,7 +772,7 @@ abstract class Parser
             foreach ($expectedArr as &$expectedType) {
                 $expectedType = $this->charTypeName($expectedType);
             }
-            $message .= ', expected ' . self::formatExceptionOptions($expectedArr);
+            $message .= ', expected ' . static::formatExceptionOptions($expectedArr);
         }
 
         // throw

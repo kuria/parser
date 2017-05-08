@@ -81,6 +81,7 @@ class StreamInput extends Input
      * See if chunk for the given position is currently cached
      *
      * @param int $position
+     * @return bool
      */
     public function isPositionInChunkCache($position)
     {
@@ -169,6 +170,7 @@ class StreamInput extends Input
      *
      * @param int $position
      * @param int $chunkOffset
+     * @return bool
      */
     protected function loadChunkFromStream($position, $chunkOffset)
     {
