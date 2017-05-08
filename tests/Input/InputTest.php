@@ -54,7 +54,7 @@ INPUT;
 
         // backward read
         $read = '';
-        for (--$i; isset($input->data[$i - $input->offset]) || $input->loadData($i); --$i) {
+        for (--$i; $i - $input->offset >= 0 || $input->loadData($i); --$i) {
             $read .= $input->data[$i - $input->offset];
         }
 
