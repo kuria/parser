@@ -484,7 +484,7 @@ abstract class Parser
     /**
      * Get map of all characters (ASCII 0-255)
      *
-     * Faster that calling ord() 255 times.
+     * Faster than calling ord() 255 times.
      *
      * @return array ord => chr
      */
