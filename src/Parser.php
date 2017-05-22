@@ -797,7 +797,6 @@ abstract class Parser
             // add options
             $out = '';
             for ($i = 0, $last = sizeof($options) - 1; $i <= $last; ++$i) {
-
                 // add delimiter
                 if (0 !== $i) {
                     $out .= $last === $i ? ' or ' : ', ';
@@ -805,7 +804,6 @@ abstract class Parser
 
                 // add option
                 $out .= "\"{$options[$i]}\"";
-
             }
 
             return $out;

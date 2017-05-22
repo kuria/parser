@@ -61,7 +61,7 @@ abstract class Input
 
         while ($remainingChars > 0 && (isset($this->data[$currentPosition - $this->offset]) || $this->loadData($currentPosition))) {
             $inputPosition = $currentPosition - $this->offset;
-            $availableChars = $this->length - $inputPosition;            
+            $availableChars = $this->length - $inputPosition;
             $charsToRead = $availableChars >= $remainingChars ? $remainingChars : $availableChars;
 
             $chunk .= substr($this->data, $inputPosition, $charsToRead);
