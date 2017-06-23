@@ -137,7 +137,7 @@ abstract class Parser
      */
     public function seek($offset, $absolute = false)
     {
-        if (0 === $offset) {
+        if ($offset === 0) {
             return $absolute ? $this->rewind() : $this;
         }
 
@@ -151,8 +151,8 @@ abstract class Parser
             $direction = $position > $this->i ? 1 : -1;
 
             while ($this->i !== $position) {
-                if (1 === $direction) {
-                    if (null === $this->shift() && $this->i !== $position) {
+                if ($direction === 1) {
+                    if ($this->shift() === null && $this->i !== $position) {
                         throw new ParserException(sprintf('Cannot seek to position "%d" - out of boundaries (unexpected end)', $position));
                     }
                 } else {
@@ -207,7 +207,7 @@ abstract class Parser
      */
     public function atNewline()
     {
-        return "\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char;
+        return $this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r";
     }
 
     /**
@@ -310,7 +310,7 @@ abstract class Parser
             // check type
             if (
                 static::CHAR_WS !== $this->charTypeMap[$this->char]
-                || !$newlines && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)
+                || !$newlines && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")
             ) {
                 break;
             }
@@ -371,7 +371,7 @@ abstract class Parser
     public function eatUntilEol($skip = true)
     {
         $consumed = '';
-        while (!$this->end && !("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)) {
+        while (!$this->end && !($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
             $consumed .= $this->eat();
         }
 
@@ -394,7 +394,7 @@ abstract class Parser
     {
         $out = '';
 
-        while (!$this->end && (("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char) || "\n" === $this->char && "\r" === $this->lastChar)) {
+        while (!$this->end && (($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") || $this->char === "\n" && $this->lastChar === "\r")) {
             $out .= $this->eat();
         }
 
@@ -425,7 +425,7 @@ abstract class Parser
      */
     public function charType($char = false)
     {
-        return $this->charTypeMap[false === $char ? $this->char : $char];
+        return $this->charTypeMap[$char === false ? $this->char : $char];
     }
 
     /**
@@ -549,11 +549,11 @@ abstract class Parser
         $eol = null;
 
         while (!$this->end) {
-            if ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char) {
-                if ("\n" === $this->char) {
+            if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
+                if ($this->char === "\n") {
                     // LF
                     $eol = "\n";
-                } elseif ("\n" === $this->peek()) {
+                } elseif ($this->peek() === "\n") {
                     // CRLF
                     $eol = "\r\n";
                 } else {
@@ -605,7 +605,7 @@ abstract class Parser
     public function revertState()
     {
         $state = array_pop($this->states);
-        if (null === $state) {
+        if ($state === null) {
             throw new \RuntimeException('No states active');
         }
         list($this->end, $this->i, $this->char, $this->charType, $this->lastChar, $this->line, $this->vars) = $state;
@@ -621,7 +621,7 @@ abstract class Parser
      */
     public function popState()
     {
-        if (null === array_pop($this->states)) {
+        if (array_pop($this->states) === null) {
             throw new \RuntimeException('No states active');
         }
 
@@ -714,7 +714,7 @@ abstract class Parser
         $message = 'Unexpected end';
 
         // add expectations
-        if (null !== $expected) {
+        if ($expected !== null) {
             $message .= ', expected ' . static::formatExceptionOptions($expected);
         }
 
@@ -734,14 +734,14 @@ abstract class Parser
         $message = 'Unexpected ';
 
         // add char
-        if (null === $this->char) {
+        if ($this->char === null) {
             $message .= 'end';
         } else {
             $message .= "\"{$this->char}\"";
         }
 
         // add expectations
-        if (null !== $expected) {
+        if ($expected !== null) {
             $message .= ', expected ' . static::formatExceptionOptions($expected);
         }
 
@@ -762,12 +762,12 @@ abstract class Parser
 
         // prepare message
         $message = 'Unexpected ' . $this->charTypeName($type);
-        if (null !== $this->char && static::CHAR_OTHER !== $type) {
+        if ($this->char !== null && static::CHAR_OTHER !== $type) {
             $message .= " (\"{$this->char}\")";
         }
 
         // add expectations
-        if (null !== $expected) {
+        if ($expected !== null) {
             $expectedArr = (array) $expected;
             foreach ($expectedArr as &$expectedType) {
                 $expectedType = $this->charTypeName($expectedType);
@@ -788,7 +788,7 @@ abstract class Parser
     public static function formatExceptionOptions($options)
     {
         // return empty string for null
-        if (null === $options) {
+        if ($options === null) {
             return '';
         }
 
@@ -798,7 +798,7 @@ abstract class Parser
             $out = '';
             for ($i = 0, $last = sizeof($options) - 1; $i <= $last; ++$i) {
                 // add delimiter
-                if (0 !== $i) {
+                if ($i !== 0) {
                     $out .= $last === $i ? ' or ' : ', ';
                 }
 

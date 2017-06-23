@@ -25,7 +25,7 @@ class StreamInputTest extends InputTest
     {
         $stream = fopen('php://memory', 'r+');
 
-        if ('' !== $data) {
+        if ($data !== '') {
             fwrite($stream, $data);
             fseek($stream, 0);
         }

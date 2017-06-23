@@ -867,7 +867,7 @@ abstract class ParserTest extends \PHPUnit_Framework_TestCase
         $this->assertSame($expectedAtNewline, $parser->atNewline(), sprintf('expected atNewline() to yield %s', $expectedAtNewline ? 'true' : 'false'));
         $this->assertSame($expectedEnd, $parser->end, sprintf('expected end to be %s', $expectedEnd ? 'true' : 'false'));
 
-        if (null !== $expectedVars) {
+        if ($expectedVars !== null) {
             $this->assertSame($expectedVars, $parser->vars, 'expected vars to match');
         }
     }

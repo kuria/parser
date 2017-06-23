@@ -10,7 +10,7 @@ class StreamInputParserTest extends InputParserTest
     {
         $stream = fopen('php://memory', 'r+');
 
-        if ('' !== $data) {
+        if ($data !== '') {
             fwrite($stream, $data);
             fseek($stream, 0);
         }

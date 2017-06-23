@@ -27,7 +27,7 @@ class ParserException extends \RuntimeException
     public static function createForLineAndOffset($line, $offset, $message, $code = 0, \Exception $previous = null)
     {
         // extend error message
-        if (null !== $line) {
+        if ($line !== null) {
             $message .= ' on line ' . $line;
         }
         $message .= ' (at offset ' . $offset . ')';

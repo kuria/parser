@@ -60,7 +60,7 @@ class InputParser extends Parser
 
     protected function jump($position)
     {
-        if (null !== ($length = $this->input->getTotalLength())) {
+        if (($length = $this->input->getTotalLength()) !== (null)) {
             if ($position < 0 || $position > $length) {
                 throw new ParserException(sprintf('Cannot jump to position "%d" - out of boundaries', $position));
             }
@@ -102,7 +102,7 @@ class InputParser extends Parser
         $this->lastChar = $this->char;
         if (isset($this->input->data[$this->i - $this->input->offset]) || $this->input->loadData($this->i)) {
             $this->char = $this->input->data[$this->i - $this->input->offset];
-            if ($this->trackLineNumber && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)) {
+            if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
                 ++$this->line;
             }
         } else {
@@ -135,7 +135,7 @@ class InputParser extends Parser
 
         // update state
         $currentChar = $this->char;
-        if ($this->trackLineNumber && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)) {
+        if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
             --$this->line;
         }
         $this->char = $this->input->data[$this->i - $this->input->offset];
@@ -163,7 +163,7 @@ class InputParser extends Parser
         $this->lastChar = $this->char;
         if (isset($this->input->data[$this->i - $this->input->offset]) || $this->input->loadData($this->i)) {
             $this->char = $this->input->data[$this->i - $this->input->offset];
-            if ($this->trackLineNumber && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)) {
+            if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
                 ++$this->line;
             }
         } else {
@@ -195,7 +195,7 @@ class InputParser extends Parser
         $this->i = $newPosition;
 
         // update state
-        if ($this->trackLineNumber && ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char)) {
+        if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
             --$this->line;
         }
         $this->char = $this->input->data[$this->i - $this->input->offset];
@@ -230,7 +230,7 @@ class InputParser extends Parser
         $this->lastChar = null;
         if ($this->trackLineNumber) {
             $this->line = 1;
-            if ("\n" === $this->char && $this->lastChar !== "\r" || "\r" === $this->char) {
+            if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
                 ++$this->line;
             }
         } else {

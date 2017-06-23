@@ -120,7 +120,7 @@ class StreamInput extends Input
     public function loadData($position)
     {
         // check position and available bytes
-        if ($position < 0 || null !== $this->streamLength && $position >= $this->streamLength) {
+        if ($position < 0 || $this->streamLength !== null && $position >= $this->streamLength) {
             return false;
         }
 
@@ -181,7 +181,7 @@ class StreamInput extends Input
         }
 
         // determine how many bytes to read
-        if (null !== $this->streamLength && $this->streamLength - $position < $this->chunkSize) {
+        if ($this->streamLength !== null && $this->streamLength - $position < $this->chunkSize) {
             // near the end, do not read more than is available
             $bytesToRead = $this->streamLength - $position;
         } else {
@@ -203,7 +203,7 @@ class StreamInput extends Input
 
         $this->streamOffsetCurrent += $this->length;
 
-        return $this->length > 0 && (null === $this->streamLength || 0 === $bytesToRead);
+        return $this->length > 0 && ($this->streamLength === null || $bytesToRead === 0);
     }
 
     /**
