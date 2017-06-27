@@ -1,6 +1,12 @@
 Changelog
 #########
 
+1.0.1
+*****
+
+- code style fixes
+
+
 1.0.0
 *****
 
