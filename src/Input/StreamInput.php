@@ -1,12 +1,7 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser\Input;
 
-/**
- * Stream input
- *
- * @author ShiraNai7 <shira.cz>
- */
 class StreamInput extends Input
 {
     /** @var resource the input stream */
@@ -22,17 +17,15 @@ class StreamInput extends Input
     /** @var int number of past chunks to cache */
     protected $chunkCacheSize;
     /** @var array past chunk cache */
-    protected $chunkCache = array();
+    protected $chunkCache = [];
     /** @var bool an attempt to load a chunk has been made 1/0 */
     protected $seeded = false;
 
     /**
-     * @param resource $stream         the input stream
-     * @param int|null $length         total number of bytes available (from current position), if known
-     * @param int      $chunkSize      length of single loaded chunk in bytes
-     * @param int      $chunkCacheSize number of past chunks to cache for reuse (0 to disable)
+     * @param resource $stream
+     * @param int $length total number of bytes available (from current position), if known
      */
-    public function __construct($stream, $length, $chunkSize, $chunkCacheSize = 0)
+    function __construct($stream, ?int $length, int $chunkSize, int $chunkCacheSize = 0)
     {
         $this->stream = $stream;
         $this->streamLength = $length;
@@ -42,48 +35,27 @@ class StreamInput extends Input
         $this->streamOffsetCurrent = $this->streamOffsetInitial;
     }
 
-    public function getTotalLength()
+    function getTotalLength(): ?int
     {
         return $this->streamLength;
     }
 
-    /**
-     * Get chunk size
-     *
-     * @return int
-     */
-    public function getChunkSize()
+    function getChunkSize(): int
     {
         return $this->chunkSize;
     }
 
-    /**
-     * Get number of past chunks that may be cached
-     *
-     * @return int
-     */
-    public function getChunkCacheSize()
+    function getChunkCacheSize(): int
     {
         return $this->chunkCacheSize;
     }
     
-    /**
-     * Get number of past chunks that are currently in the cache
-     *
-     * @return int
-     */
-    public function getCurrentChunkCacheSize()
+    function getCurrentChunkCacheSize(): int
     {
         return sizeof($this->chunkCache);
     }
 
-    /**
-     * See if chunk for the given position is currently cached
-     *
-     * @param int $position
-     * @return bool
-     */
-    public function isPositionInChunkCache($position)
+    function isPositionInChunkCache(int $position): bool
     {
         $chunkOffset = $position - $position % $this->chunkSize;
 
@@ -91,33 +63,25 @@ class StreamInput extends Input
     }
 
     /**
-     * Set chunk cache size
+     * Modify chunk cache size
      *
-     * The extra cached chunks are dropped immediately.
-     *
-     * @param int $chunkCacheSize
-     * @return static
+     * Extra cached chunks are dropped immediately.
      */
-    public function setChunkCacheSize($chunkCacheSize)
+    function setChunkCacheSize(int $chunkCacheSize): void
     {
         $this->chunkCacheSize = $chunkCacheSize;
 
         if (($currentChunkCacheSize = sizeof($this->chunkCache)) > $this->chunkCacheSize) {
             array_splice($this->chunkCache, 0, $currentChunkCacheSize - $this->chunkCacheSize);
         }
-        
-        return $this;
     }
 
-    /**
-     * Clear chunk cache
-     */
-    public function clearChunkCache()
+    function clearChunkCache(): void
     {
-        $this->chunkCache = array();
+        $this->chunkCache = [];
     }
 
-    public function loadData($position)
+    function loadData(int $position): bool
     {
         // check position and available bytes
         if ($position < 0 || $this->streamLength !== null && $position >= $this->streamLength) {
@@ -142,7 +106,7 @@ class StreamInput extends Input
                     $currentChunkLength = $this->length;
 
                     $this->loadCachedChunk($chunkOffset);
-                    $this->cacheChunk($currentChunkOffset, $currentChunk, $currentChunkLength);
+                    $this->putChunkInCache($currentChunk, $currentChunkOffset, $currentChunkLength);
                 } else {
                     // just load the cached chunk
                     $this->loadCachedChunk($chunkOffset);
@@ -154,7 +118,7 @@ class StreamInput extends Input
                 // load from stream
                 if ($this->seeded && $this->chunkCacheSize > 0) {
                     // cache current chunk
-                    $this->cacheChunk($this->offset, $this->data, $this->length);
+                    $this->putChunkInCache($this->data, $this->offset, $this->length);
                 }
                 $success = $this->loadChunkFromStream($position, $chunkOffset);
             }
@@ -165,14 +129,7 @@ class StreamInput extends Input
         return $success;
     }
 
-    /**
-     * Load chunk from the stream
-     *
-     * @param int $position
-     * @param int $chunkOffset
-     * @return bool
-     */
-    protected function loadChunkFromStream($position, $chunkOffset)
+    protected function loadChunkFromStream(int $position, int $chunkOffset): bool
     {
         // seek (if needed)
         if ($this->streamOffsetCurrent !== ($seekOffset = $this->streamOffsetInitial + $chunkOffset)) {
@@ -206,31 +163,19 @@ class StreamInput extends Input
         return $this->length > 0 && ($this->streamLength === null || $bytesToRead === 0);
     }
 
-    /**
-     * Store given chunk in the cache
-     *
-     * @param int    $chunkOffset
-     * @param string $chunk
-     * @param int    $chunkLength
-     */
-    protected function cacheChunk($chunkOffset, $chunk, $chunkLength)
+    protected function putChunkInCache(string $chunk, int $chunkOffset, int $chunkLength): void
     {
-        $this->chunkCache["chunk_{$chunkOffset}"] = array($chunk, $chunkLength);
+        $this->chunkCache["chunk_{$chunkOffset}"] = [$chunk, $chunkLength];
 
         if (sizeof($this->chunkCache) > $this->chunkCacheSize) {
             array_shift($this->chunkCache);
         }
     }
 
-    /**
-     * Load cached chunk
-     *
-     * @param int $chunkOffset
-     */
-    protected function loadCachedChunk($chunkOffset)
+    protected function loadCachedChunk(int $chunkOffset): void
     {
         $this->offset = $chunkOffset;
-        list($this->data, $this->length) = $this->chunkCache["chunk_{$chunkOffset}"];
+        [$this->data, $this->length] = $this->chunkCache["chunk_{$chunkOffset}"];
         unset($this->chunkCache["chunk_{$chunkOffset}"]);
     }
 }

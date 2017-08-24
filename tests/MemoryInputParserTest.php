@@ -1,18 +1,14 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser;
 
+use Kuria\Parser\Input\Input;
 use Kuria\Parser\Input\MemoryInput;
 
-class MemoryInputParserTest extends InputParserTest
+class MemoryInputParserTest extends ParserTest
 {
-    protected function createParser($data = '', $trackLineNumber = true)
+    protected function createInput(string $data): Input
     {
-        return new InputParser(new MemoryInput($data), $trackLineNumber);
-    }
-
-    public function testGetInput()
-    {
-        $this->assertInstanceOf(__NAMESPACE__ . '\Input\MemoryInput', $this->createParser()->getInput());
+        return new MemoryInput($data);
     }
 }

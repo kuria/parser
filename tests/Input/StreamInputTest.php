@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser\Input;
 
 class StreamInputTest extends InputTest
 {
-    protected function createInput($data)
+    protected function createInput(string $data): Input
     {
         $stream = $this->createStream($data);
 
@@ -15,13 +15,7 @@ class StreamInputTest extends InputTest
         );
     }
 
-    /**
-     * Create stream for given data
-     *
-     * @param string $data
-     * @return resource
-     */
-    protected function createStream($data)
+    protected function createStream(string $data)
     {
         $stream = fopen('php://memory', 'r+');
 
@@ -33,12 +27,12 @@ class StreamInputTest extends InputTest
         return $stream;
     }
 
-    protected function isTotalLengthKnown()
+    protected function isTotalLengthKnown(): bool
     {
         return true;
     }
 
-    public function testReadBehaviorAndChunkCache()
+    function testReadBehaviorAndChunkCache()
     {
         $that = $this;
 
@@ -174,21 +168,12 @@ class StreamInputTest extends InputTest
         $this->assertStreamInputChunkCacheState($input, $totalLength);
     }
 
-    /**
-     * Assert stream input state
-     *
-     * @param StreamInput $input
-     * @param resource    $stream
-     * @param string      $expectedData
-     * @param int         $expectedOffset
-     * @param int         $expectedStreamPosition
-     */
     protected function assertStreamInputState(
         StreamInput $input,
         $stream,
-        $expectedData,
-        $expectedOffset,
-        $expectedStreamPosition
+        string $expectedData,
+        int $expectedOffset,
+        int $expectedStreamPosition
     ) {
         $this->assertSame($expectedData, $input->data);
         $this->assertSame(strlen($input->data), $input->length);
@@ -196,14 +181,7 @@ class StreamInputTest extends InputTest
         $this->assertSame($expectedStreamPosition, ftell($stream));
     }
 
-    /**
-     * Assert state of the stream input's chunk cache
-     *
-     * @param StreamInput $input
-     * @param int         $totalLength
-     * @param int         $expectedChunkNumberInCache,...
-     */
-    protected function assertStreamInputChunkCacheState(StreamInput $input, $totalLength)
+    protected function assertStreamInputChunkCacheState(StreamInput $input, int $totalLength)
     {
         $expectedChunkNumbersInCacheMap = array_flip(array_slice(func_get_args(), 2));
         $chunkSize = $input->getChunkSize();

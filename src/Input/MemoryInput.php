@@ -1,29 +1,21 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser\Input;
 
-/**
- * Memory input
- *
- * @author ShiraNai7 <shira.cz>
- */
 class MemoryInput extends Input
 {
-    /**
-     * @param string $data
-     */
-    public function __construct($data)
+    function __construct(string $data)
     {
         $this->data = $data;
         $this->length = strlen($data);
     }
 
-    public function getTotalLength()
+    function getTotalLength(): ?int
     {
         return $this->length;
     }
 
-    public function loadData($position)
+    function loadData(int $position): bool
     {
         return $position >= 0 && $position < $this->length;
     }

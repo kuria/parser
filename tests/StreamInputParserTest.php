@@ -1,12 +1,13 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser;
 
+use Kuria\Parser\Input\Input;
 use Kuria\Parser\Input\StreamInput;
 
-class StreamInputParserTest extends InputParserTest
+class StreamInputParserTest extends ParserTest
 {
-    protected function createParser($data = '', $trackLineNumber = true)
+    protected function createInput(string $data): Input
     {
         $stream = fopen('php://memory', 'r+');
 
@@ -15,28 +16,19 @@ class StreamInputParserTest extends InputParserTest
             fseek($stream, 0);
         }
 
-        return new InputParser(
-            new StreamInput(
-                $stream,
-                $this->shouldSpecifyStreamLength() ? strlen($data) : null,
-                1024
-            ),
-            $trackLineNumber
+        return new StreamInput(
+            $stream,
+            $this->shouldSpecifyStreamLength() ? strlen($data) : null,
+            1024
         );
     }
 
     /**
      * See if this test should specify the length of the stream
-     *
-     * @return bool
      */
-    protected function shouldSpecifyStreamLength()
+    protected function shouldSpecifyStreamLength(): bool
     {
         return true;
     }
 
-    public function testGetInput()
-    {
-        $this->assertInstanceOf(__NAMESPACE__ . '\Input\StreamInput', $this->createParser()->getInput());
-    }
 }

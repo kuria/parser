@@ -10,27 +10,24 @@ Character-by-character string parsing library.
 Features
 ********
 
-- parser class
 - input abstraction (parse strings in memory or from a stream)
-- newline aware
 - supports CR, LF and CRLF line endings
 - line number tracking (can be disabled for performance)
-- exceptions with current line and offset
+- verbose exceptions
 - many methods to navigate and operate the parser
 
   - forward / backward peeking and seeking
   - forward / backward character consumption
   - state stack
 
-- current state tracking
-- multiple character types
+- character types
 - expectations
 
 
 Requirements
 ************
 
-- PHP 5.3.0+ or 7.0.0+
+- PHP 7.1+
 
 
 Usage example
@@ -43,28 +40,23 @@ Simple INI parser implementation
 
    <?php
 
-   use Kuria\Parser\InputParser;
+   use Kuria\Parser\Parser;
 
    /**
-    * INI parser
-    *
-    * Serves as an InputParser usage example and is not supposed to be complete.
+    * INI parser (example)
     */
    class IniParser
    {
        /**
         * Parse an INI string
-        *
-        * @param string $string
-        * @return array
         */
-       public function parse($string)
+       public function parse(string $string): array
        {
            // create parser
-           $parser = InputParser::fromString($string);
+           $parser = Parser::fromString($string);
 
            // prepare variables
-           $data = array();
+           $data = [];
            $currentSection = null;
 
            // parse
@@ -76,18 +68,18 @@ Simple INI parser implementation
                }
 
                // parse the current thing
-               if ('[' === $parser->char) {
+               if ($parser->char === '[') {
                    // a section
                    $currentSection = $this->parseSection($parser);
-               } elseif (';' === $parser->char) {
+               } elseif ($parser->char === ';') {
                    // a comment
-                   $this->parseComment($parser);
+                   $this->skipComment($parser);
                } else {
                    // a key=value pair
-                   list($key, $value) = $this->parseKeyValue($parser);
+                   [$key, $value] = $this->parseKeyValue($parser);
 
                    // add to output
-                   if (null === $currentSection) {
+                   if ($currentSection === null) {
                        $data[$key] = $value;
                    } else {
                        $data[$currentSection][$key] = $value;
@@ -99,12 +91,9 @@ Simple INI parser implementation
        }
 
        /**
-        * Parse a section
-        *
-        * @param InputParser $parser
-        * @return string
+        * Parse a section and return its name
         */
-       protected function parseSection(InputParser $parser)
+       protected function parseSection(Parser $parser): string
        {
            // we should be at the [ character now, eat it
            $parser->eatChar('[');
@@ -116,11 +105,9 @@ Simple INI parser implementation
        }
 
        /**
-        * Parse a comment
-        *
-        * @param InputParser $parser
+        * Skip a commented-out line
         */
-       protected function parseComment(InputParser $parser)
+       protected function skipComment(Parser $parser)
        {
            // we should be at the ; character now, eat it
            $parser->eatChar(';');
@@ -131,11 +118,8 @@ Simple INI parser implementation
 
        /**
         * Parse a key=value pair
-        *
-        * @param InputParser $parser
-        * @return array key, value
         */
-       protected function parseKeyValue(InputParser $parser)
+       protected function parseKeyValue(Parser $parser): array
        {
            // we should be at the first character of the key
            // eat characters until = is found
@@ -145,7 +129,7 @@ Simple INI parser implementation
            // that is our value
            $value = trim($parser->eatUntilEol());
 
-           return array($key, $value);
+           return [$key, $value];
        }
    }
 

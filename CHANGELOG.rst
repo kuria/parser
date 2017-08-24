@@ -1,6 +1,16 @@
 Changelog
 #########
 
+2.0.0
+*****
+
+- updated to PHP 7.1
+- merged ``Parser`` and ``InputParser`` into a single class
+- refactored exceptions
+- optimized character type maps
+- code style improvements
+
+
 1.0.1
 *****
 

@@ -1,18 +1,17 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser\Input;
 
+use Kuria\Parser\Exception\InputException;
+
 /**
- * Input
+ * Input abstraction
  *
  * Usage example:
  *
- * // read the entire input char-by-char
- * for ($i = 0; isset($input->data[$i - $input->offset]) || $input->loadData($i); ++$i) {
- *     echo $input->data[$i - $input->offset];
- * }
- *
- * @author ShiraNai7 <shira.cz>
+ *  for ($i = 0; isset($input->data[$i - $input->offset]) || $input->loadData($i); ++$i) {
+ *      echo $input->data[$i - $input->offset];
+ *  }
  */
 abstract class Input
 {
@@ -25,34 +24,26 @@ abstract class Input
 
     /**
      * Get total number of bytes available, if known
-     *
-     * @return int|null
      */
-    abstract public function getTotalLength();
+    abstract function getTotalLength(): ?int;
 
     /**
      * Load data for the given position
-     *
-     * @param int $position
-     * @return bool
      */
-    abstract public function loadData($position);
+    abstract function loadData(int $position): bool;
 
     /**
      * Get chunk of the data
      *
-     * @param int $position absolute starting position (>= 0)
-     * @param int $length   up to N bytes will be read (>= 1)
-     * @throws \InvalidArgumentException if the position or length is invalid
-     * @return string
+     * @throws InputException if the position or length is invalid
      */
-    public function chunk($position, $length)
+    function getChunk(int $position, int $length): string
     {
         if ($position < 0) {
-            throw new \InvalidArgumentException('Invalid position');
+            throw new InputException('Position cannot be less than 0');
         }
         if ($length < 1) {
-            throw new \InvalidArgumentException('Invalid length');
+            throw new InputException('Length cannot be less than 1');
         }
 
         $chunk = '';

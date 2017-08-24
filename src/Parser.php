@@ -1,13 +1,18 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser;
 
-/**
- * Base parser
- *
- * @author ShiraNai7 <shira.cz>
- */
-abstract class Parser
+use Kuria\Parser\Exception\InputException;
+use Kuria\Parser\Exception\NoActiveStatesException;
+use Kuria\Parser\Exception\OutOfBoundariesException;
+use Kuria\Parser\Exception\UnexpectedCharacterException;
+use Kuria\Parser\Exception\UnexpectedCharacterTypeException;
+use Kuria\Parser\Exception\UnexpectedEndException;
+use Kuria\Parser\Exception\UnknownCharacterTypeException;
+use Kuria\Parser\Input\Input;
+use Kuria\Parser\Input\MemoryInput;
+
+class Parser
 {
     /** No character */
     const CHAR_NONE = 1;
@@ -22,14 +27,15 @@ abstract class Parser
     /** Unmapped character */
     const CHAR_OTHER = 6;
 
+    /** @var array|null [class => [char1 => type1, ...], ...] */
+    protected static $charTypeMap;
+
     /** @var int current index */
     public $i;
     /** @var string|null current character or null on string end */
     public $char;
     /** @var int type of the current character */
     public $charType;
-    /** @var array map of all chars to char types (char => char type) */
-    public $charTypeMap = array();
     /** @var string|null previous character (null on start) */
     public $lastChar;
     /** @var int|null current line, if line tracking is enabled (newline at the current position has already been counted) */
@@ -37,41 +43,52 @@ abstract class Parser
     /** @var bool end of input 1/0 */
     public $end;
     /** @var array generic variables attached to current state */
-    public $vars = array();
-    
+    public $vars = [];
+
+    /** @var Input */
+    protected $input;
     /** @var array stored states */
-    protected $states = array();
-    /** @var bool track line numbers 1/0 */
+    protected $states = [];
+    /** @var bool */
     protected $trackLineNumber = true;
 
-    public function __construct()
+    function __construct(Input $input, bool $trackLineNumber = true)
     {
-        $this->initialize();
+        isset(static::$charTypeMap[static::class]) or $this->initializeCharTypeMap();
+
+        $this->input = $input;
+        $this->trackLineNumber = $trackLineNumber;
+
+        $this->rewind();
     }
 
     /**
-     * Initialize the parser
+     * Create parser for the given string
      *
-     * It is the constructor's job to call this method.
+     * @return static
      */
-    protected function initialize()
+    static function fromString(string $data, bool $trackLineNumber = true)
     {
-        $this->charTypeMap = $this->buildCharTypeMap();
+        return new static(new MemoryInput($data), $trackLineNumber);
+    }
+
+    function getInput(): Input
+    {
+        return $this->input;
     }
 
     /**
      * Get length, if known
-     *
-     * @return int|null
      */
-    abstract public function getLength();
+    function getLength(): ?int
+    {
+        return $this->input->getTotalLength();
+    }
 
     /**
      * See if line number tracking is enabled
-     *
-     * @return bool
      */
-    public function isTrackingLineNumbers()
+    function isTrackingLineNumbers(): bool
     {
         return $this->trackLineNumber;
     }
@@ -79,72 +96,203 @@ abstract class Parser
     /**
      * Go to the next character and return the current one
      *
-     * @return string|null null null on boundary
+     * Returns NULL at the end.
      */
-    abstract public function eat();
+    function eat(): ?string
+    {
+        // implementation is almost identical to shift()
+        // but is copy-pasted for performance reasons
+
+        // ended?
+        if ($this->end) {
+            return null;
+        }
+
+        // increment position
+        ++$this->i;
+
+        // update state
+        $this->lastChar = $this->char;
+        if (isset($this->input->data[$this->i - $this->input->offset]) || $this->input->loadData($this->i)) {
+            $this->char = $this->input->data[$this->i - $this->input->offset];
+            if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
+                ++$this->line;
+            }
+        } else {
+            $this->char = null;
+            $this->end = true;
+        }
+        $this->charType = static::$charTypeMap[static::class][$this->char];
+
+        return $this->lastChar;
+    }
 
     /**
      * Go to the previous character and return the current one
      *
-     * @return string|null null on boundary
+     * Returns NULL at the beginning.
      */
-    abstract public function spit();
+    function spit(): ?string
+    {
+        // implementation is almost identical to unshift()
+        // but is copy-pasted for performance reasons
+
+        // at the beginning?
+        if ($this->i <= 0) {
+            return null;
+        }
+
+        // calculate new position and check data
+        $newPosition = $this->i - 1;
+        if (!isset($this->input->data[$newPosition - $this->input->offset]) && !$this->input->loadData($newPosition)) {
+            throw new InputException('Failed to load previous data');
+        }
+
+        // set new position
+        $this->i = $newPosition;
+
+        // update state
+        $currentChar = $this->char;
+        if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
+            --$this->line;
+        }
+        $this->char = $this->input->data[$this->i - $this->input->offset];
+        $this->charType = static::$charTypeMap[static::class][$this->char];
+        $this->lastChar = $this->peek(-1);
+        $this->end = false;
+
+        return $currentChar;
+    }
 
     /**
      * Go to the next character and return it
      *
-     * @return string|null null on boundary
+     * Returns NULL at the end.
      */
-    abstract public function shift();
+    function shift(): ?string
+    {
+        // implementation is almost identical to eat()
+        // but is copy-pasted for performance reasons
+
+        // ended?
+        if ($this->end) {
+            return null;
+        }
+
+        // increment position
+        ++$this->i;
+
+        // update state
+        $this->lastChar = $this->char;
+        if (isset($this->input->data[$this->i - $this->input->offset]) || $this->input->loadData($this->i)) {
+            $this->char = $this->input->data[$this->i - $this->input->offset];
+            if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
+                ++$this->line;
+            }
+        } else {
+            $this->char = null;
+            $this->end = true;
+        }
+        $this->charType = static::$charTypeMap[static::class][$this->char];
+
+        return $this->char;
+    }
 
     /**
      * Go to the previous character and return it
      *
-     * @return string|null null on boundary
+     * Returns NULL at the beginning.
      */
-    abstract public function unshift();
+    function unshift(): ?string
+    {
+        // implementation is almost identical to spit()
+        // but is copy-pasted for performance reasons
+
+        // at the beginning?
+        if ($this->i <= 0) {
+            return null;
+        }
+
+        // calculate new position and check data
+        $newPosition = $this->i - 1;
+        if (!isset($this->input->data[$newPosition - $this->input->offset]) && !$this->input->loadData($newPosition)) {
+            throw new InputException('Failed to load previous data');
+        }
+
+        // set new position
+        $this->i = $newPosition;
+
+        // update state
+        if ($this->trackLineNumber && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
+            --$this->line;
+        }
+        $this->char = $this->input->data[$this->i - $this->input->offset];
+        $this->charType = static::$charTypeMap[static::class][$this->char];
+        $this->lastChar = $this->peek(-1);
+        $this->end = false;
+
+        return $this->char;
+    }
 
     /**
      * Get character at the given offset
      *
-     * Does not affect current state.
-     *
-     * @param int  $offset   relative offset from current position
-     * @param bool $absolute treat $offset as an absolute position 1/0
-     * @return string|null null on boundary
+     * - does not affect current state.
+     * - $offset is relative to the current position, unless $absolute is TRUE
+     * - returns NULL if the offset is outside of the data
      */
-    abstract public function peek($offset = 1, $absolute = false);
+    function peek(int $offset = 1, bool $absolute = false): ?string
+    {
+        $position = $absolute ? $offset : $this->i + $offset;
+
+        if (
+            $position >= 0
+            && (
+                isset($this->input->data[$position - $this->input->offset])
+                || $this->input->loadData($position)
+            )
+        ) {
+            return $this->input->data[$position - $this->input->offset];
+        }
+
+        return null;
+    }
 
     /**
      * Get chunk of input data
      *
-     * Does not affect current state.
+     * - does not affect current state
+     * - $position is absolute starting position (>= 0)
+     * - $length specifies how many bytes to read (>= 1)
      *
-     * @param int $position absolute starting position (>= 0)
-     * @param int $length   up to N bytes will be read (>= 1)
-     * @throws \InvalidArgumentException if the position or length is invalid
-     * @return string
+     * @throws InputException if the position or length is invalid
      */
-    abstract public function chunk($position, $length);
+    function getChunk(int $position, int $length): string
+    {
+        return $this->input->getChunk($position, $length);
+    }
 
     /**
      * Alter current position
      *
-     * @param int  $offset   relative offset, can be negative
-     * @param bool $absolute treat $offset as an absolute position 1/0
-     * @throws ParserException when navigating beyond available boundaries
-     * @return static
+     * $offset is relative to the current position, unless $absolute is TRUE.
+     *
+     * @throws OutOfBoundariesException when navigating beyond available boundaries
      */
-    public function seek($offset, $absolute = false)
+    function seek(int $offset, bool $absolute = false): void
     {
         if ($offset === 0) {
-            return $absolute ? $this->rewind() : $this;
+            if ($absolute) {
+                $this->rewind();
+            }
+
+            return;
         }
 
         $position = $absolute ? $offset : $this->i + $offset;
 
         if ($position < 0) {
-            throw new ParserException(sprintf('Cannot seek to position "%d" - out of boundaries', $position));
+            throw new OutOfBoundariesException($position);
         }
 
         if ($this->trackLineNumber || !$this->jump($position)) {
@@ -153,59 +301,86 @@ abstract class Parser
             while ($this->i !== $position) {
                 if ($direction === 1) {
                     if ($this->shift() === null && $this->i !== $position) {
-                        throw new ParserException(sprintf('Cannot seek to position "%d" - out of boundaries (unexpected end)', $position));
+                        throw new OutOfBoundariesException($position);
                     }
                 } else {
                     $this->unshift();
                 }
             }
         }
-
-        return $this;
     }
 
     /**
-     * Jump to the specified position
+     * Try to jump to the specified position
      *
-     * Public version: {@see seek()}
+     * - internal; only safe to use with line tracking disabled
+     * - returns FALSE on failure
      *
-     * Internal. Only safe to use with line tracking disabled.
-     *
-     * @param int $position
-     * @throws ParserException if the position is invalid
-     * @return bool false if not supported, true otherwise
+     * @throws OutOfBoundariesException if the position is invalid
      */
-    abstract protected function jump($position);
+    protected function jump(int $position): bool
+    {
+        if (($length = $this->input->getTotalLength()) !== null) {
+            if ($position < 0 || $position > $length) {
+                throw new OutOfBoundariesException($position);
+            }
+
+            // update state
+            $this->i = $position - $this->input->offset;
+
+            if (isset($this->input->data[$position - $this->input->offset]) || $this->input->loadData($position)) {
+                $this->char = $this->input->data[$this->i];
+                $this->end = false;
+            } else {
+                $this->char = null;
+                $this->end = true;
+            }
+            $this->charType = static::$charTypeMap[static::class][$this->char];
+            $this->lastChar = $this->peek(-1);
+
+            return true;
+        }
+
+        // cannot jump safely if the length is not known
+        return false;
+    }
 
     /**
      * Reset state
-     *
-     * @return static
      */
-    public function reset()
+    function reset(): void
     {
-        $this->states = array();
+        $this->states = [];
         $this->rewind();
-
-        return $this;
     }
 
     /**
      * Rewind to the beginning
-     *
-     * @return static
      */
-    abstract public function rewind();
+    function rewind(): void
+    {
+        $this->i = 0;
+        $this->end = !$this->input->loadData(0);
+        $this->char = $this->end ? null : $this->input->data[0];
+        $this->charType = static::$charTypeMap[static::class][$this->char];
+        $this->lastChar = null;
+        if ($this->trackLineNumber) {
+            $this->line = 1;
+            if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
+                ++$this->line;
+            }
+        } else {
+            $this->line = null;
+        }
+    }
 
     /**
      * See if the parser is at the start of a newline sequence
      *
      * Internally, the logic from this function is copy-pasted
-     * inline for performance reasons
-     *
-     * @return bool
+     * inline for performance reasons.
      */
-    public function atNewline()
+    function atNewline(): bool
     {
         return $this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r";
     }
@@ -213,25 +388,23 @@ abstract class Parser
     /**
      * Consume specific character and return the next character
      *
-     * @param string $char the character to consume
-     * @throws ParserException if current character is not $char
-     * @return string null null on boundary
+     * Returns NULL at the end.
+     *
+     * @throws UnexpectedCharacterException if current character is not $char
      */
-    public function eatChar($char)
+    function eatChar(string $char): ?string
     {
-        if ($char === $this->char) {
-            return $this->shift();
+        if ($char !== $this->char) {
+            throw new UnexpectedCharacterException($this->char, [$char], $this->i, $this->line);
         }
-        $this->unexpectedCharException($char);
+
+        return $this->shift();
     }
 
     /**
      * Attempt to consume specific character and return success state
-     *
-     * @param string $char the character to consume
-     * @return bool consumed successfully 1/0
      */
-    public function eatIfChar($char)
+    function tryEatChar(string $char): bool
     {
         if ($char === $this->char) {
             $this->shift();
@@ -245,19 +418,17 @@ abstract class Parser
     /**
      * Consume all character of specified type
      *
-     * Pre-offset: any
-     * Post-offset: at first invalid character or end
-     *
-     * @param int $type character type (see Parser::CHAR_* constants)
-     * @return string all consumed characters
+     * - see Parser::CHAR_* constants
+     * - pre-offset: any
+     * - post-offset: at first invalid character or end
      */
-    public function eatType($type)
+    function eatType(int $type): string
     {
         // scan
         $consumed = '';
         while (!$this->end) {
             // check type
-            if ($this->charTypeMap[$this->char] !== $type) {
+            if (static::$charTypeMap[static::class][$this->char] !== $type) {
                 break;
             }
 
@@ -271,19 +442,18 @@ abstract class Parser
     /**
      * Consume all characters of specified types
      *
-     * Pre-offset: any
-     * Post-offset: at first invalid character or end
-     *
-     * @param array $typeMap map of types (see Parser::CHAR_* constants)
-     * @return string all consumed characters
+     * - see Parser::CHAR_* constants
+     * - $typeMap should have types as keys and non-null values
+     * - pre-offset: any
+     * - post-offset: at first invalid character or end
      */
-    public function eatTypes(array $typeMap)
+    function eatTypes(array $typeMap): string
     {
         // scan
         $consumed = '';
         while (!$this->end) {
             // check type
-            if (!isset($typeMap[$this->charTypeMap[$this->char]])) {
+            if (!isset($typeMap[static::$charTypeMap[static::class][$this->char]])) {
                 break;
             }
 
@@ -295,21 +465,19 @@ abstract class Parser
     }
 
     /**
-     * Consume whitespace if any
+     * Consume whitespace, if any
      *
-     * Pre-offset: any
-     * Post-offset: at first non-whitespace character or end
-     *
-     * @param bool $newlines consume newline characters (\r or \n)
-     * @return string|null returns first non-whitespace character (or a newline if $newlines = false) or null (= end)
+     * - if $newlines is TRUE, newline characters will be consumed too
+     * - pre-offset: any
+     * - post-offset: at first non-whitespace character, newline (if $newlines = FALSE) or end
      */
-    public function eatWs($newlines = true)
+    function eatWs(bool $newlines = true): void
     {
         // scan
         while (!$this->end) {
             // check type
             if (
-                static::CHAR_WS !== $this->charTypeMap[$this->char]
+                static::CHAR_WS !== static::$charTypeMap[static::class][$this->char]
                 || !$newlines && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")
             ) {
                 break;
@@ -318,26 +486,22 @@ abstract class Parser
             // shift
             $this->shift();
         }
-        
-        return $this->char;
     }
 
     /**
      * Consume all characters until the specified delimiters
      *
-     * Pre-offset: any
-     * Post-offset: at or after first delimiter or at end
+     * - returns all consumed characters
+     * - $delimiterMap should be a single character or an array with delimiter characters as keys and non-null values
+     * - pre-offset: any
+     * - post-offset: at or after first delimiter or at end
      *
-     * @param array|string $delimiterMap  map of delimiter characters or a single character
-     * @param bool         $skipDelimiter skip the delimiter 1/0
-     * @param bool         $allowEnd      treat end as valid delimiter 1/0
-     * @throws ParserException if end is encountered and $allowEnd is false
-     * @return string all consumed characters
+     * @throws UnexpectedEndException if end is encountered and $allowEnd is FALSE
      */
-    public function eatUntil($delimiterMap, $skipDelimiter = true, $allowEnd = false)
+    function eatUntil($delimiterMap, bool $skipDelimiter = true, bool $allowEnd = false): string
     {
         if (!is_array($delimiterMap)) {
-            $delimiterMap = array($delimiterMap => true);
+            $delimiterMap = [$delimiterMap => true];
         }
 
         // scan
@@ -348,7 +512,7 @@ abstract class Parser
 
         // check end
         if ($this->end && !$allowEnd) {
-            $this->unexpectedEndException(array_keys($delimiterMap));
+            throw new UnexpectedEndException(array_keys($delimiterMap), $this->i, $this->line);
         }
 
         // skip delimiter
@@ -362,13 +526,12 @@ abstract class Parser
     /**
      * Consume all character until end of line or the end
      *
-     * Pre-offset: any
-     * Post-offset: after or at the newline
-     *
-     * @param bool $skip skip the newline 1/0
-     * @return string all consumed characters
+     * - returns all consumed characters
+     * - if $skip is TRUE, the line-ending equence will be skipped too
+     * - pre-offset: any
+     * - post-offset: after or at the newline
      */
-    public function eatUntilEol($skip = true)
+    function eatUntilEol(bool $skip = true): string
     {
         $consumed = '';
         while (!$this->end && !($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")) {
@@ -385,12 +548,11 @@ abstract class Parser
     /**
      * Eat end of line
      *
-     * Pre-offset: at EOL
-     * Post-offset: after EOL
-     *
-     * @return string all consumed characters
+     * - returns all consumed characters
+     * - pre-offset: at EOL
+     * - post-offset: after EOL
      */
-    public function eatEol()
+    function eatEol(): string
     {
         $out = '';
 
@@ -404,9 +566,9 @@ abstract class Parser
     /**
      * Eat all reamaining characters
      *
-     * @return string all consumed characters
+     * Returns all consumed characters.
      */
-    public function eatRest()
+    function eatRest(): string
     {
         $out = '';
 
@@ -419,30 +581,203 @@ abstract class Parser
 
     /**
      * Get character type
-     *
-     * @param string|bool|null $char char, null or false (= current char)
-     * @return int
      */
-    public function charType($char = false)
+    function getCharType(?string $char): int
     {
-        return $this->charTypeMap[$char === false ? $this->char : $char];
+        return static::$charTypeMap[static::class][$char];
     }
 
     /**
-     * Build char type map
+     * Get name of character type
      *
-     * @return array
+     * See Parser::CHAR_* constants.
+     *
+     * @throws UnknownCharacterTypeException on unknown type
      */
-    protected function buildCharTypeMap()
+    function getCharTypeName(int $type): string
     {
-        $charMap = array(
+        switch ($type) {
+            case static::CHAR_NONE: return 'CHAR_NONE';
+            case static::CHAR_WS: return 'CHAR_WS';
+            case static::CHAR_NUM: return 'CHAR_NUM';
+            case static::CHAR_IDT: return 'CHAR_IDT';
+            case static::CHAR_CTRL: return 'CHAR_CTRL';
+            case static::CHAR_OTHER: return 'CHAR_OTHER';
+            default: throw new UnknownCharacterTypeException(sprintf('Unknown character type "%d"', $type));
+        }
+    }
+
+    /**
+     * Find and return the next end of line sequence
+     *
+     * The scan will not change current state of the parser.
+     */
+    function detectEol(): ?string
+    {
+        $this->pushState();
+
+        try {
+            $eol = null;
+
+            while (!$this->end) {
+                if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
+                    if ($this->char === "\n") {
+                        // LF
+                        $eol = "\n";
+                    } elseif ($this->peek() === "\n") {
+                        // CRLF
+                        $eol = "\r\n";
+                    } else {
+                        // CR
+                        $eol = "\r";
+                    }
+
+                    break;
+                } else {
+                    $this->shift();
+                }
+            }
+
+            return $eol;
+        } finally {
+            $this->revertState();
+        }
+    }
+
+    /**
+     * Get number of stored states
+     */
+    function countStates(): int
+    {
+        return sizeof($this->states);
+    }
+
+    /**
+     * Store the current state
+     *
+     * @see Parser::revertState()
+     * @see Parser::popState()
+     */
+    function pushState(): void
+    {
+        $this->states[] = [$this->end, $this->i, $this->char, $this->charType, $this->lastChar, $this->line, $this->vars];
+    }
+
+    /**
+     * Revert to the last stored state and pop it
+     *
+     * @throws NoActiveStatesException if no states are active
+     */
+    function revertState(): void
+    {
+        $state = array_pop($this->states);
+        if ($state === null) {
+            throw new NoActiveStatesException('Cannot revert state - no active states');
+        }
+        [$this->end, $this->i, $this->char, $this->charType, $this->lastChar, $this->line, $this->vars] = $state;
+    }
+
+    /**
+     * Pop the last stored state without reverting to it
+     *
+     * @throws NoActiveStatesException if no states are active
+     */
+    function popState(): void
+    {
+        if (array_pop($this->states) === null) {
+            throw new NoActiveStatesException('Cannot pop state - no active states');
+        }
+    }
+
+    /**
+     * Throw away all stored states
+     */
+    function clearStates(): void
+    {
+        $this->states = [];
+    }
+
+    /**
+     * Ensure that we are at the end
+     *
+     * @throws UnexpectedCharacterException if the current position is not the end
+     */
+    function expectEnd(): void
+    {
+        if (!$this->end) {
+            throw new UnexpectedCharacterException($this->char, ['end'], $this->i, $this->line);
+        }
+    }
+
+    /**
+     * Ensure that we are not at the end
+     *
+     * @throws UnexpectedEndException if the current position is the end
+     */
+    function expectNotEnd(): void
+    {
+        if ($this->end) {
+            throw new UnexpectedEndException(null, $this->i, $this->line);
+        }
+    }
+
+    /**
+     * Ensure that the character matches the expectation
+     *
+     * @throws UnexpectedEndException if at the end
+     * @throws UnexpectedCharacterException if the expectation is not met
+     */
+    function expectChar(string $expectedChar): void
+    {
+        if ($expectedChar !== $this->char) {
+            throw $this->end
+                ? new UnexpectedEndException([$expectedChar], $this->i, $this->line)
+                : new UnexpectedCharacterException($this->char, [$expectedChar], $this->i, $this->line);
+        }
+    }
+
+    /**
+     * Ensure that the current character is of the given type
+     *
+     * See Parser::CHAR_* constants.
+     *
+     * @throws UnexpectedCharacterTypeException if the expectation is not met
+     */
+    function expectCharType(int $expectedType): void
+    {
+        if (static::$charTypeMap[static::class][$this->char] !== $expectedType) {
+            throw new UnexpectedCharacterTypeException(
+                $this->getCharTypeName(static::$charTypeMap[static::class][$this->char]),
+                [$this->getCharTypeName($expectedType)],
+                $this->i,
+                $this->line
+            );
+        }
+    }
+
+    /**
+     * Get character => character type map
+     */
+    static function getCharTypeMap(): array
+    {
+        isset(static::$charTypeMap[static::class]) or static::initializeCharTypeMap();
+
+        return static::$charTypeMap[static::class];
+    }
+
+    /**
+     * Initialize character type map
+     */
+    protected static function initializeCharTypeMap(): void
+    {
+        $map = [
             '' => static::CHAR_NONE, // special case for NULL
-        );
+        ];
 
-        $wsMap = $this->getWhitespaceMap();
-        $idtExtraMap = $this->getIdtExtraMap();
+        $wsMap = static::getWhitespaceMap();
+        $idtExtraMap = static::getExtraIdtCharMap();
 
-        foreach ($this->getCharMap() as $ord => $char) {
+        foreach (static::getAsciiCharMap() as $ord => $char) {
             if ($ord > 64 && $ord < 91 || $ord > 96 && $ord < 123 || $ord > 126 || isset($idtExtraMap[$char])) {
                 $type = static::CHAR_IDT;
             } elseif ($ord > 47 && $ord < 58) {
@@ -455,42 +790,34 @@ abstract class Parser
                 $type = static::CHAR_OTHER;
             }
 
-            $charMap[$char] = $type;
+            $map[$char] = $type;
         }
 
-        return $charMap;
+        static::$charTypeMap[static::class] = $map;
     }
 
     /**
      * Get map of characters which are considered whitespace
-     *
-     * @return array
      */
-    protected function getWhitespaceMap()
+    protected static function getWhitespaceMap(): array
     {
-        return array(' ' => 0, "\n" => 1, "\r" => 2, "\t" => 3, "\h" => 4);
+        return [' ' => 0, "\n" => 1, "\r" => 2, "\t" => 3, "\h" => 4];
     }
 
     /**
-     * Get map of extra characters (beyond a-z A-Z) that are considered identifier characters
-     *
-     * @return array
+     * Get map of extra characters (beyond a-z, A-Z) that are considered identifier characters
      */
-    protected function getIdtExtraMap()
+    protected static function getExtraIdtCharMap(): array
     {
-        return array('_' => 0, '$' => 1);
+        return ['_' => 0];
     }
 
     /**
-     * Get map of all characters (ASCII 0-255)
-     *
-     * Faster than calling ord() 255 times.
-     *
-     * @return array ord => chr
+     * Get ord => chr map of all characters (ASCII 0-255)
      */
-    protected function getCharMap()
+    protected static function getAsciiCharMap(): array
     {
-        return array(
+        return [
             "\x0", "\x1", "\x2", "\x3", "\x4", "\x5", "\x6", "\x7", "\x8", "\x9", "\xa",
             "\xb", "\xc", "\xd", "\xe", "\xf", "\x10", "\x11", "\x12", "\x13", "\x14",
             "\x15", "\x16", "\x17", "\x18", "\x19", "\x1a", "\x1b", "\x1c", "\x1d", "\x1e",
@@ -513,303 +840,6 @@ abstract class Parser
             "\xe3", "\xe4", "\xe5", "\xe6", "\xe7", "\xe8", "\xe9", "\xea", "\xeb", "\xec",
             "\xed", "\xee", "\xef", "\xf0", "\xf1", "\xf2", "\xf3", "\xf4", "\xf5", "\xf6",
             "\xf7", "\xf8", "\xf9", "\xfa", "\xfb", "\xfc", "\xfd", "\xfe", "\xff",
-        );
-    }
-
-    /**
-     * Get name of character type
-     *
-     * @param int $type character type (see Parser::CHAR_* constants)
-     * @throws \InvalidArgumentException on invalid type
-     * @return string
-     */
-    public function charTypeName($type)
-    {
-        switch ($type) {
-            case static::CHAR_NONE: return 'CHAR_NONE';
-            case static::CHAR_WS: return 'CHAR_WS';
-            case static::CHAR_NUM: return 'CHAR_NUM';
-            case static::CHAR_IDT: return 'CHAR_IDT';
-            case static::CHAR_CTRL: return 'CHAR_CTRL';
-            case static::CHAR_OTHER: return 'CHAR_OTHER';
-            default: throw new \InvalidArgumentException('Invalid char type');
-        }
-    }
-
-    /**
-     * Find and return the next end of line
-     * The scan will not change current state of the parser.
-     *
-     * @return string
-     */
-    public function detectEol()
-    {
-        $this->pushState();
-
-        $eol = null;
-
-        while (!$this->end) {
-            if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
-                if ($this->char === "\n") {
-                    // LF
-                    $eol = "\n";
-                } elseif ($this->peek() === "\n") {
-                    // CRLF
-                    $eol = "\r\n";
-                } else {
-                    // CR
-                    $eol = "\r";
-                }
-
-                break;
-            } else {
-                $this->shift();
-            }
-        }
-
-        $this->revertState();
-
-        return $eol;
-    }
-
-    /**
-     * Get number of stored states
-     *
-     * @return int
-     */
-    public function getNumStates()
-    {
-        return sizeof($this->states);
-    }
-
-    /**
-     * Store the current state
-     *
-     * Don't forget to revertState() or popState() when you are done.
-     *
-     * @return static
-     */
-    public function pushState()
-    {
-        $this->states[] = array($this->end, $this->i, $this->char, $this->charType, $this->lastChar, $this->line, $this->vars);
-
-        return $this;
-    }
-
-    /**
-     * Revert to the last stored state and pop it
-     *
-     * @throws \RuntimeException if no states are active
-     * @return static
-     */
-    public function revertState()
-    {
-        $state = array_pop($this->states);
-        if ($state === null) {
-            throw new \RuntimeException('No states active');
-        }
-        list($this->end, $this->i, $this->char, $this->charType, $this->lastChar, $this->line, $this->vars) = $state;
-
-        return $this;
-    }
-
-    /**
-     * Pop the last stored state without reverting to it
-     *
-     * @throws \RuntimeException if no states are active
-     * @return static
-     */
-    public function popState()
-    {
-        if (array_pop($this->states) === null) {
-            throw new \RuntimeException('No states active');
-        }
-
-        return $this;
-    }
-
-    /**
-     * Throw away all stored states
-     *
-     * @return static
-     */
-    public function clearStates()
-    {
-        $this->states = array();
-
-        return $this;
-    }
-
-    /**
-     * Ensure that we are at the end
-     *
-     * @throws ParserException if the current position is not the end
-     * @return static
-     */
-    public function expectEnd()
-    {
-        if (!$this->end) {
-            throw ParserException::createForCurrentState($this, 'Expected end');
-        }
-
-        return $this;
-    }
-
-    /**
-     * Ensure that we are not at the end
-     *
-     * @throws ParserException if the current position is the end
-     * @return static
-     */
-    public function expectNotEnd()
-    {
-        if ($this->end) {
-            $this->unexpectedEndException();
-        }
-
-        return $this;
-    }
-
-    /**
-     * Ensure that the character matches the expectation
-     *
-     * @param string $expectedChar expected character
-     * @throws ParserException if the expectation is not met
-     * @return static
-     */
-    public function expectChar($expectedChar)
-    {
-        if ($expectedChar !== $this->char) {
-            $this->unexpectedCharException($expectedChar);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Ensure that the current character is of the given type
-     *
-     * @param int $expectedType the type to expect (see Parser::CHAR_* constants)
-     * @throws ParserException if the expectation is not met
-     * @return static
-     */
-    public function expectCharType($expectedType)
-    {
-        if ($this->charTypeMap[$this->char] !== $expectedType) {
-            $this->unexpectedCharTypeException($expectedType);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Throw unexpected end exception
-     *
-     * @param string|string[]|null $expected what was expected as string or array of options, or null
-     * @throws ParserException
-     */
-    public function unexpectedEndException($expected = null)
-    {
-        // prepare message
-        $message = 'Unexpected end';
-
-        // add expectations
-        if ($expected !== null) {
-            $message .= ', expected ' . static::formatExceptionOptions($expected);
-        }
-
-        // throw
-        throw ParserException::createForCurrentState($this, $message);
-    }
-
-    /**
-     * Throw unexpected character exception
-     *
-     * @param string|string[]|null $expected expected character as string or array of strings, or null
-     * @throws ParserException
-     */
-    public function unexpectedCharException($expected = null)
-    {
-        // prepare message
-        $message = 'Unexpected ';
-
-        // add char
-        if ($this->char === null) {
-            $message .= 'end';
-        } else {
-            $message .= "\"{$this->char}\"";
-        }
-
-        // add expectations
-        if ($expected !== null) {
-            $message .= ', expected ' . static::formatExceptionOptions($expected);
-        }
-
-        // throw
-        throw ParserException::createForCurrentState($this, $message);
-    }
-
-    /**
-     * Throw unexpected character type exception
-     *
-     * @param int|int[]|null $expected expected character type as integer or array of integers, or null
-     * @throws ParserException
-     */
-    public function unexpectedCharTypeException($expected = null)
-    {
-        // get char type
-        $type = $this->charTypeMap[$this->char];
-
-        // prepare message
-        $message = 'Unexpected ' . $this->charTypeName($type);
-        if ($this->char !== null && static::CHAR_OTHER !== $type) {
-            $message .= " (\"{$this->char}\")";
-        }
-
-        // add expectations
-        if ($expected !== null) {
-            $expectedArr = (array) $expected;
-            foreach ($expectedArr as &$expectedType) {
-                $expectedType = $this->charTypeName($expectedType);
-            }
-            $message .= ', expected ' . static::formatExceptionOptions($expectedArr);
-        }
-
-        // throw
-        throw ParserException::createForCurrentState($this, $message);
-    }
-
-    /**
-     * Format list of options for exception messages
-     *
-     * @param string|string[]|null $options options as string or array of options, or null
-     * @return string
-     */
-    public static function formatExceptionOptions($options)
-    {
-        // return empty string for null
-        if ($options === null) {
-            return '';
-        }
-
-        // format for array
-        if (is_array($options)) {
-            // add options
-            $out = '';
-            for ($i = 0, $last = sizeof($options) - 1; $i <= $last; ++$i) {
-                // add delimiter
-                if ($i !== 0) {
-                    $out .= $last === $i ? ' or ' : ', ';
-                }
-
-                // add option
-                $out .= "\"{$options[$i]}\"";
-            }
-
-            return $out;
-        }
-
-        // format for string
-        return "\"{$options}\"";
+        ];
     }
 }

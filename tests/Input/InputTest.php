@@ -1,25 +1,23 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Parser\Input;
 
-abstract class InputTest extends \PHPUnit_Framework_TestCase
+use Kuria\Parser\Exception\InputException;
+use PHPUnit\Framework\TestCase;
+
+abstract class InputTest extends TestCase
 {
     /**
      * Create input instance for the given data
-     *
-     * @param string $data
-     * @return Input
      */
-    abstract protected function createInput($data);
+    abstract protected function createInput(string $data): Input;
 
     /**
      * See if the total length of data is known
-     *
-     * @return bool
      */
-    abstract protected function isTotalLengthKnown();
+    abstract protected function isTotalLengthKnown(): bool;
 
-    public function testProperties()
+    function testProperties()
     {
         $input = $this->createInput('hello');
 
@@ -28,14 +26,14 @@ abstract class InputTest extends \PHPUnit_Framework_TestCase
         $this->assertInternalType('integer', $input->offset);
     }
 
-    public function testGetTotalLength()
+    function testGetTotalLength()
     {
         $input = $this->createInput('hello');
 
         $this->assertSame($this->isTotalLengthKnown() ? 5 : null, $input->getTotalLength());
     }
 
-    public function testLoadData()
+    function testLoadData()
     {
         $data = <<<INPUT
 Lorem ipsum dolor sit amet consectetuer elit vel risus Nulla nisl.
@@ -61,48 +59,42 @@ INPUT;
         $this->assertSame(strrev($data), $read);
     }
 
-    public function testChunk()
+    function testChunk()
     {
         $input = $this->createInput('aaaaabbbbbcccccx');
 
         // in-range chunks
-        $this->assertSame('aaaaa', $input->chunk(0, 5));
-        $this->assertSame('aaaab', $input->chunk(1, 5));
-        $this->assertSame('bccccc', $input->chunk(9, 6));
-        $this->assertSame('bccccc', $input->chunk(9, 6));
-        $this->assertSame('aaaaabbbbbcccccx', $input->chunk(0, 16));
+        $this->assertSame('aaaaa', $input->getChunk(0, 5));
+        $this->assertSame('aaaab', $input->getChunk(1, 5));
+        $this->assertSame('bccccc', $input->getChunk(9, 6));
+        $this->assertSame('bccccc', $input->getChunk(9, 6));
+        $this->assertSame('aaaaabbbbbcccccx', $input->getChunk(0, 16));
 
         // chunks beyond available range should contain all available data
-        $this->assertSame('x', $input->chunk(15, 10));
+        $this->assertSame('x', $input->getChunk(15, 10));
 
         // chunking past available range should yield an empty chunk
-        $this->assertSame('', $input->chunk(100, 5));
+        $this->assertSame('', $input->getChunk(100, 5));
     }
 
-    /**
-     * @expectedException        \InvalidArgumentException
-     * @expectedExceptionMessage Invalid position
-     */
-    public function testChunkThrowsExceptionOnNegativePosition()
+    function testChunkThrowsExceptionOnNegativePosition()
     {
-        $this->createInput('aaa')->chunk(-1, 5);
+        $this->expectException(InputException::class);
+
+        $this->createInput('aaa')->getChunk(-1, 5);
     }
 
-    /**
-     * @expectedException        \InvalidArgumentException
-     * @expectedExceptionMessage Invalid length
-     */
-    public function testChunkThrowsExceptionOnZeroLength()
+    function testChunkThrowsExceptionOnZeroLength()
     {
-        $this->createInput('aaa')->chunk(0, 0);
+        $this->expectException(InputException::class);
+
+        $this->createInput('aaa')->getChunk(0, 0);
     }
 
-    /**
-     * @expectedException        \InvalidArgumentException
-     * @expectedExceptionMessage Invalid length
-     */
-    public function testChunkThrowsExceptionOnNegativeLength()
+    function testChunkThrowsExceptionOnNegativeLength()
     {
-        $this->createInput('aaa')->chunk(0, -1);
+        $this->expectException(InputException::class);
+
+        $this->createInput('aaa')->getChunk(0, -1);
     }
 }
