@@ -5,21 +5,21 @@ namespace Kuria\Parser\Input;
 class StreamInput extends Input
 {
     /** @var resource the input stream */
-    protected $stream;
+    private $stream;
     /** @var int|null $length total number of bytes available, if known */
-    protected $streamLength;
+    private $streamLength;
     /** @var int initial offset of the stream */
-    protected $streamOffsetInitial;
+    private $streamOffsetInitial;
     /** @var int|null */
-    protected $streamOffsetCurrent;
+    private $streamOffsetCurrent;
     /** @var int chunk size */
-    protected $chunkSize;
+    private $chunkSize;
     /** @var int number of past chunks to cache */
-    protected $chunkCacheSize;
+    private $chunkCacheSize;
     /** @var array past chunk cache */
-    protected $chunkCache = [];
+    private $chunkCache = [];
     /** @var bool an attempt to load a chunk has been made 1/0 */
-    protected $seeded = false;
+    private $seeded = false;
 
     /**
      * @param resource $stream
@@ -49,7 +49,7 @@ class StreamInput extends Input
     {
         return $this->chunkCacheSize;
     }
-    
+
     function getCurrentChunkCacheSize(): int
     {
         return sizeof($this->chunkCache);
@@ -129,7 +129,7 @@ class StreamInput extends Input
         return $success;
     }
 
-    protected function loadChunkFromStream(int $position, int $chunkOffset): bool
+    private function loadChunkFromStream(int $position, int $chunkOffset): bool
     {
         // seek (if needed)
         if ($this->streamOffsetCurrent !== ($seekOffset = $this->streamOffsetInitial + $chunkOffset)) {
@@ -163,7 +163,7 @@ class StreamInput extends Input
         return $this->length > 0 && ($this->streamLength === null || $bytesToRead === 0);
     }
 
-    protected function putChunkInCache(string $chunk, int $chunkOffset, int $chunkLength): void
+    private function putChunkInCache(string $chunk, int $chunkOffset, int $chunkLength): void
     {
         $this->chunkCache["chunk_{$chunkOffset}"] = [$chunk, $chunkLength];
 
@@ -172,7 +172,7 @@ class StreamInput extends Input
         }
     }
 
-    protected function loadCachedChunk(int $chunkOffset): void
+    private function loadCachedChunk(int $chunkOffset): void
     {
         $this->offset = $chunkOffset;
         [$this->data, $this->length] = $this->chunkCache["chunk_{$chunkOffset}"];

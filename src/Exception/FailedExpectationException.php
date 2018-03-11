@@ -11,13 +11,13 @@ abstract class FailedExpectationException extends ParseException
         $message = "Unexpected {$actual}";
 
         if ($expected !== null) {
-            $message .= static::formatExpectations($expected);
+            $message .= self::formatExpectations($expected);
         }
 
         parent::__construct($message, $offset, $line, $previous);
     }
 
-    protected static function formatExpectations(array $expected): string
+    private static function formatExpectations(array $expected): string
     {
         if (empty($expected)) {
             return '';

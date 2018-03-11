@@ -30,5 +30,4 @@ class StreamInputParserTest extends ParserTest
     {
         return true;
     }
-
 }

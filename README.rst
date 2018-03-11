@@ -3,6 +3,9 @@ Parser
 
 Character-by-character string parsing library.
 
+.. image:: https://travis-ci.org/kuria/parser.svg?branch=master
+   :target: https://travis-ci.org/kuria/parser
+
 .. contents::
    :depth: 2
 

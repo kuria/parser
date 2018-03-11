@@ -29,7 +29,6 @@ abstract class ParserTest extends TestCase
 
     function testCreateFromString()
     {
-        /** @var Parser|string $parserClass */
         $parserClass = get_class($this->createParser());
 
         $parser = $parserClass::fromString("\nhello", false);
@@ -76,7 +75,8 @@ abstract class ParserTest extends TestCase
             $this->assertSame(
                 $charType,
                 $parser->getCharType((string) $char),
-                sprintf('ASCII %d should be %s',
+                sprintf(
+                    'ASCII %d should be %s',
                     ord((string) $char),
                     $parser->getCharTypeName($charType)
                 )
@@ -223,6 +223,16 @@ abstract class ParserTest extends TestCase
 
         $this->expectException(UnexpectedCharacterException::class);
         $this->expectExceptionMessage('Unexpected "a", expected "x" on line 1 (at offset 0)');
+
+        $parser->eatChar('x');
+    }
+
+    function testEatCharThrowsExceptionAtEnd()
+    {
+        $parser = $this->createParser();
+
+        $this->expectException(UnexpectedEndException::class);
+        $this->expectExceptionMessage('Unexpected end, expected "x" on line 1 (at offset 0)');
 
         $parser->eatChar('x');
     }
@@ -501,7 +511,7 @@ abstract class ParserTest extends TestCase
 
         $parser->seek(100, true);
     }
-    
+
     function testSeekAbsoluteThrowsExceptionIfOutOfBoundsNegative()
     {
         $parser = $this->createParser('abc');
@@ -636,11 +646,11 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc');
 
-        $this->assertSame(null, $parser->peek(-1));
+        $this->assertNull($parser->peek(-1));
         $this->assertSame('a', $parser->peek(0));
         $this->assertSame('b', $parser->peek(1));
         $this->assertSame('c', $parser->peek(2));
-        $this->assertSame(null, $parser->peek(3));
+        $this->assertNull($parser->peek(3));
     }
 
     function testChunk()
@@ -754,7 +764,7 @@ abstract class ParserTest extends TestCase
 
         $this->assertSame(0, $parser->countStates());
     }
-    
+
     function testLineTrackingDisabled()
     {
         $parser = $this->createParser("foo\nbar", false);
@@ -802,12 +812,36 @@ abstract class ParserTest extends TestCase
         bool $expectedEnd,
         ?array $expectedVars = null
     ): void {
-        $this->assertSame($expectedChar, $parser->char, sprintf('Expected current character to be "%s"', $expectedChar));
-        $this->assertSame($expectedLastChar, $parser->lastChar, sprintf('Expected last character to be "%s"', $expectedLastChar));
-        $this->assertSame($expectedLine, $parser->line, sprintf('Expected current line to be %d', $expectedLine));
-        $this->assertSame($expectedOffset, $parser->i, sprintf('Expected current offset to be %d', $expectedOffset));
-        $this->assertSame($expectedAtNewline, $parser->atNewline(), sprintf('Expected atNewline() to yield %s', $expectedAtNewline ? 'true' : 'false'));
-        $this->assertSame($expectedEnd, $parser->end, sprintf('Expected end to be %s', $expectedEnd ? 'true' : 'false'));
+        $this->assertSame(
+            $expectedChar,
+            $parser->char,
+            sprintf('Expected current character to be "%s"', $expectedChar)
+        );
+        $this->assertSame(
+            $expectedLastChar,
+            $parser->lastChar,
+            sprintf('Expected last character to be "%s"', $expectedLastChar)
+        );
+        $this->assertSame(
+            $expectedLine,
+            $parser->line,
+            sprintf('Expected current line to be %d', $expectedLine)
+        );
+        $this->assertSame(
+            $expectedOffset,
+            $parser->i,
+            sprintf('Expected current offset to be %d', $expectedOffset)
+        );
+        $this->assertSame(
+            $expectedAtNewline,
+            $parser->atNewline(),
+            sprintf('Expected atNewline() to yield %s', $expectedAtNewline ? 'true' : 'false')
+        );
+        $this->assertSame(
+            $expectedEnd,
+            $parser->end,
+            sprintf('Expected end to be %s', $expectedEnd ? 'true' : 'false')
+        );
 
         if ($expectedVars !== null) {
             $this->assertSame($expectedVars, $parser->vars, 'Expected vars to match');

@@ -75,7 +75,7 @@ class StreamInputTest extends InputTest
         $gotoPosition(4);
         $this->assertStreamInputState($input, $stream, '12345', 0, $offset + 5);
         $this->assertStreamInputChunkCacheState($input, $totalLength);
-        
+
         // [CHUNK 1, cache = 0 | miss]
         $gotoChunk(1);
         $this->assertStreamInputState($input, $stream, '67890', 5, $offset + 10);
@@ -121,7 +121,7 @@ class StreamInputTest extends InputTest
         $gotoChunk(3);
         $this->assertStreamInputState($input, $stream, 'abcde', 15, $offset + 20);
         $this->assertStreamInputChunkCacheState($input, $totalLength, 1, 2);
-        
+
         // the following part depends on whether the total stream length is known to the input or not
         $gotoChunk(4, false);
         if ($this->isTotalLengthKnown()) {
@@ -155,7 +155,6 @@ class StreamInputTest extends InputTest
             $gotoPosition(-1, false);
             $this->assertStreamInputState($input, $stream, '12345', 0, $offset + 5);
             $this->assertStreamInputChunkCacheState($input, $totalLength, 3, 4);
-
         }
 
         // set chunk cache size to 1
@@ -189,7 +188,7 @@ class StreamInputTest extends InputTest
 
         for ($i = 0; $i <= $numChunks; ++$i) {
             $chunkShouldBeCached = isset($expectedChunkNumbersInCacheMap[$i]);
-            
+
             $this->assertSame(
                 $chunkShouldBeCached,
                 $input->isPositionInChunkCache($i * $chunkSize),

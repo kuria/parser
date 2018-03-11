@@ -54,7 +54,9 @@ class Parser
 
     function __construct(Input $input, bool $trackLineNumber = true)
     {
-        isset(static::$charTypeMap[static::class]) or $this->initializeCharTypeMap();
+        if (!isset(static::$charTypeMap[static::class])) {
+            $this->initializeCharTypeMap();
+        }
 
         $this->input = $input;
         $this->trackLineNumber = $trackLineNumber;
@@ -364,9 +366,10 @@ class Parser
         $this->char = $this->end ? null : $this->input->data[0];
         $this->charType = static::$charTypeMap[static::class][$this->char];
         $this->lastChar = null;
+
         if ($this->trackLineNumber) {
             $this->line = 1;
-            if ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") {
+            if ($this->char === "\n") {
                 ++$this->line;
             }
         } else {
@@ -391,10 +394,15 @@ class Parser
      * Returns NULL at the end.
      *
      * @throws UnexpectedCharacterException if current character is not $char
+     * @throws UnexpectedEndException if at the end
      */
     function eatChar(string $char): ?string
     {
         if ($char !== $this->char) {
+            if ($this->char === null) {
+                throw new UnexpectedEndException([$char], $this->i, $this->line);
+            }
+
             throw new UnexpectedCharacterException($this->char, [$char], $this->i, $this->line);
         }
 
@@ -435,7 +443,7 @@ class Parser
             // consume
             $consumed .= $this->eat();
         }
-        
+
         return $consumed;
     }
 
@@ -460,7 +468,7 @@ class Parser
             // consume
             $consumed .= $this->eat();
         }
-        
+
         return $consumed;
     }
 
@@ -519,7 +527,7 @@ class Parser
         if ($skipDelimiter && !$this->end) {
             $this->shift();
         }
-        
+
         return $consumed;
     }
 
@@ -556,7 +564,13 @@ class Parser
     {
         $out = '';
 
-        while (!$this->end && (($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r") || $this->char === "\n" && $this->lastChar === "\r")) {
+        while (
+            !$this->end
+            && (
+                ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")
+                || $this->char === "\n" && $this->lastChar === "\r"
+            )
+        ) {
             $out .= $this->eat();
         }
 
@@ -597,13 +611,20 @@ class Parser
     function getCharTypeName(int $type): string
     {
         switch ($type) {
-            case static::CHAR_NONE: return 'CHAR_NONE';
-            case static::CHAR_WS: return 'CHAR_WS';
-            case static::CHAR_NUM: return 'CHAR_NUM';
-            case static::CHAR_IDT: return 'CHAR_IDT';
-            case static::CHAR_CTRL: return 'CHAR_CTRL';
-            case static::CHAR_OTHER: return 'CHAR_OTHER';
-            default: throw new UnknownCharacterTypeException(sprintf('Unknown character type "%d"', $type));
+            case static::CHAR_NONE:
+                return 'CHAR_NONE';
+            case static::CHAR_WS:
+                return 'CHAR_WS';
+            case static::CHAR_NUM:
+                return 'CHAR_NUM';
+            case static::CHAR_IDT:
+                return 'CHAR_IDT';
+            case static::CHAR_CTRL:
+                return 'CHAR_CTRL';
+            case static::CHAR_OTHER:
+                return 'CHAR_OTHER';
+            default:
+                throw new UnknownCharacterTypeException(sprintf('Unknown character type "%d"', $type));
         }
     }
 
@@ -704,7 +725,7 @@ class Parser
      */
     function expectEnd(): void
     {
-        if (!$this->end) {
+        if ($this->char !== null) {
             throw new UnexpectedCharacterException($this->char, ['end'], $this->i, $this->line);
         }
     }
@@ -730,7 +751,7 @@ class Parser
     function expectChar(string $expectedChar): void
     {
         if ($expectedChar !== $this->char) {
-            throw $this->end
+            throw $this->char === null
                 ? new UnexpectedEndException([$expectedChar], $this->i, $this->line)
                 : new UnexpectedCharacterException($this->char, [$expectedChar], $this->i, $this->line);
         }
@@ -760,7 +781,9 @@ class Parser
      */
     static function getCharTypeMap(): array
     {
-        isset(static::$charTypeMap[static::class]) or static::initializeCharTypeMap();
+        if (!isset(static::$charTypeMap[static::class])) {
+            static::initializeCharTypeMap();
+        }
 
         return static::$charTypeMap[static::class];
     }

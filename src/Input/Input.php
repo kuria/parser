@@ -56,7 +56,7 @@ abstract class Input
             $charsToRead = $availableChars >= $remainingChars ? $remainingChars : $availableChars;
 
             $chunk .= substr($this->data, $inputPosition, $charsToRead);
-            
+
             $remainingChars -= $charsToRead;
             $currentPosition += $charsToRead;
         }
