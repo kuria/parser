@@ -670,7 +670,7 @@ class Parser
      */
     function countStates(): int
     {
-        return sizeof($this->states);
+        return count($this->states);
     }
 
     /**

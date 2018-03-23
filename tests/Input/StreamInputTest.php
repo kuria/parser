@@ -196,6 +196,6 @@ class StreamInputTest extends InputTest
             );
         }
 
-        $this->assertSame(sizeof($expectedChunkNumbersInCacheMap), $input->getCurrentChunkCacheSize());
+        $this->assertSame(count($expectedChunkNumbersInCacheMap), $input->getCurrentChunkCacheSize());
     }
 }

@@ -52,7 +52,7 @@ class StreamInput extends Input
 
     function getCurrentChunkCacheSize(): int
     {
-        return sizeof($this->chunkCache);
+        return count($this->chunkCache);
     }
 
     function isPositionInChunkCache(int $position): bool
@@ -71,7 +71,7 @@ class StreamInput extends Input
     {
         $this->chunkCacheSize = $chunkCacheSize;
 
-        if (($currentChunkCacheSize = sizeof($this->chunkCache)) > $this->chunkCacheSize) {
+        if (($currentChunkCacheSize = count($this->chunkCache)) > $this->chunkCacheSize) {
             array_splice($this->chunkCache, 0, $currentChunkCacheSize - $this->chunkCacheSize);
         }
     }
@@ -167,7 +167,7 @@ class StreamInput extends Input
     {
         $this->chunkCache["chunk_{$chunkOffset}"] = [$chunk, $chunkLength];
 
-        if (sizeof($this->chunkCache) > $this->chunkCacheSize) {
+        if (count($this->chunkCache) > $this->chunkCacheSize) {
             array_shift($this->chunkCache);
         }
     }

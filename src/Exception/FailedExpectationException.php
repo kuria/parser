@@ -25,7 +25,7 @@ abstract class FailedExpectationException extends ParseException
 
         $out = ', expected ';
 
-        for ($i = 0, $last = sizeof($expected) - 1; $i <= $last; ++$i) {
+        for ($i = 0, $last = count($expected) - 1; $i <= $last; ++$i) {
             // add delimiter
             if ($i > 0) {
                 $out .= $last === $i ? ' or ' : ', ';
