@@ -40,7 +40,7 @@ class Parser
     public $lastChar;
     /** @var int|null current line, if line tracking is enabled (newline at the current position has already been counted) */
     public $line;
-    /** @var bool end of input 1/0 */
+    /** @var bool end of input */
     public $end;
     /** @var array generic variables attached to current state */
     public $vars = [];

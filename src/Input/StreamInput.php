@@ -18,7 +18,7 @@ class StreamInput extends Input
     private $chunkCacheSize;
     /** @var array past chunk cache */
     private $chunkCache = [];
-    /** @var bool an attempt to load a chunk has been made 1/0 */
+    /** @var bool an attempt to load a chunk has been made */
     private $seeded = false;
 
     /**
