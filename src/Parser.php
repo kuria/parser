@@ -32,23 +32,31 @@ class Parser
 
     /** @var int current index */
     public $i;
+
     /** @var string|null current character or null on string end */
     public $char;
+
     /** @var int type of the current character */
     public $charType;
+
     /** @var string|null previous character (null on start) */
     public $lastChar;
+
     /** @var int|null current line, if line tracking is enabled (newline at the current position has already been counted) */
     public $line;
+
     /** @var bool end of input */
     public $end;
+
     /** @var array generic variables attached to current state */
     public $vars = [];
 
     /** @var Input */
     protected $input;
+
     /** @var array stored states */
     protected $states = [];
+
     /** @var bool */
     protected $trackLineNumber = true;
 

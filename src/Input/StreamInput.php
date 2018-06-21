@@ -6,18 +6,25 @@ class StreamInput extends Input
 {
     /** @var resource the input stream */
     private $stream;
+
     /** @var int|null $length total number of bytes available, if known */
     private $streamLength;
+
     /** @var int initial offset of the stream */
     private $streamOffsetInitial;
+
     /** @var int|null */
     private $streamOffsetCurrent;
+
     /** @var int chunk size */
     private $chunkSize;
+
     /** @var int number of past chunks to cache */
     private $chunkCacheSize;
+
     /** @var array past chunk cache */
     private $chunkCache = [];
+
     /** @var bool an attempt to load a chunk has been made */
     private $seeded = false;
 

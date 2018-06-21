@@ -17,8 +17,10 @@ abstract class Input
 {
     /** @var string the data */
     public $data = '';
+
     /** @var int offset of the data */
     public $offset = 0;
+
     /** @var int length of the data */
     public $length = 0;
 

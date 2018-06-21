@@ -6,6 +6,7 @@ abstract class ParseException extends \Exception implements ExceptionInterface
 {
     /** @var int */
     private $parserOffset;
+
     /** @var int|null */
     private $parserLine;
 

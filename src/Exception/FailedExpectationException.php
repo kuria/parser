@@ -10,7 +10,7 @@ abstract class FailedExpectationException extends ParseException
     {
         $message = "Unexpected {$actual}";
 
-        if ($expected !== null) {
+        if ($expected) {
             $message .= self::formatExpectations($expected);
         }
 
@@ -19,10 +19,6 @@ abstract class FailedExpectationException extends ParseException
 
     private static function formatExpectations(array $expected): string
     {
-        if (empty($expected)) {
-            return '';
-        }
-
         $out = ', expected ';
 
         for ($i = 0, $last = count($expected) - 1; $i <= $last; ++$i) {
