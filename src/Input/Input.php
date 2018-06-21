@@ -15,13 +15,13 @@ use Kuria\Parser\Exception\InputException;
  */
 abstract class Input
 {
-    /** @var string the data */
+    /** @var string the data (read-only) */
     public $data = '';
 
-    /** @var int offset of the data */
+    /** @var int offset of the data (read-only) */
     public $offset = 0;
 
-    /** @var int length of the data */
+    /** @var int length of the data (read-only) */
     public $length = 0;
 
     /**
