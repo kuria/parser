@@ -32,7 +32,7 @@ class StreamInputTest extends InputTest
         return true;
     }
 
-    function testReadBehaviorAndChunkCache()
+    function testShouldUseChunkCache()
     {
         $that = $this;
 

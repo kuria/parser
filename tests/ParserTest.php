@@ -27,7 +27,7 @@ abstract class ParserTest extends TestCase
 
     abstract protected function createInput(string $data): Input;
 
-    function testCreateFromString()
+    function testShouldCreateFromString()
     {
         $parserClass = get_class($this->createParser());
 
@@ -38,7 +38,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame("\nhello", $parser->eatRest());
     }
 
-    function testInitialState()
+    function testShouldIntializeState()
     {
         $parser = $this->createParser('foo');
         $this->assertParserState($parser, 'f', null, 1, 0, false, false, []);
@@ -50,24 +50,24 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, "\n", null, 2, 0, true, false, []);
     }
 
-    function testGetInput()
+    function testShouldGetInput()
     {
         $this->assertInstanceOf(Input::class, $this->createParser()->getInput());
     }
 
-    function testGetLength()
+    function testShouldGetLength()
     {
         $this->assertSame(0, $this->createParser('')->getLength());
         $this->assertSame(5, $this->createParser('hello')->getLength());
     }
 
-    function testIsTrackingLineNumbers()
+    function testShouldConfigureLineTracking()
     {
         $this->assertTrue($this->createParser('hello', true)->isTrackingLineNumbers());
         $this->assertFalse($this->createParser('hello', false)->isTrackingLineNumbers());
     }
 
-    function testGetCharTypeForCharacter()
+    function testShouldGetCharTypeForCharacter()
     {
         $parser = $this->createParser();
 
@@ -84,7 +84,7 @@ abstract class ParserTest extends TestCase
         }
     }
 
-    function testGetCharTypeForNull()
+    function testShouldGetCharTypeForNull()
     {
         $parser = $this->createParser();
 
@@ -94,7 +94,7 @@ abstract class ParserTest extends TestCase
     /**
      * @dataProvider provideCharTypes
      */
-    function testGetCharTypeName(int $type, string $expectedName)
+    function testShouldGetCharTypeName(int $type, string $expectedName)
     {
         $parser = $this->createParser();
 
@@ -113,7 +113,7 @@ abstract class ParserTest extends TestCase
         ];
     }
 
-    function testExceptionOnUnknownCharType()
+    function testShouldThrowExceptionOnUnknownCharType()
     {
         $parser = $this->createParser();
 
@@ -125,7 +125,7 @@ abstract class ParserTest extends TestCase
     /**
      * @dataProvider provideEolSamples
      */
-    function testDetectEol(string $data, string $expectedEol)
+    function testShouldDetectEol(string $data, string $expectedEol)
     {
         $parser = $this->createParser($data);
 
@@ -141,7 +141,7 @@ abstract class ParserTest extends TestCase
         ];
     }
 
-    function testDetectEolWithoutNewline()
+    function testShouldDetectEolWithoutNewline()
     {
         $parser = $this->createParser('no-newlines-here');
 
@@ -162,7 +162,7 @@ abstract class ParserTest extends TestCase
         $this->assertNull($parser->shift());
     }
 
-    function testUnshift()
+    function testShouldUnshift()
     {
         $parser = $this->createParser("a\nbc");
 
@@ -172,28 +172,28 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', null, 1, 0, false, false);
     }
 
-    function testUnshiftReturnsNullAtBeginning()
+    function testUnshiftShouldReturnNullAtBeginning()
     {
         $parser = $this->createParser('abc');
 
         $this->assertNull($parser->unshift());
     }
 
-    function testEat()
+    function testShouldEat()
     {
         $parser = $this->createParser('abc');
 
         $this->assertParserMethodOutcome($parser, $parser->eat(), 'a', 'b');
     }
 
-    function testEatReturnsNullAtEnd()
+    function testEatShouldReturnNullAtEnd()
     {
         $parser = $this->createParser('');
 
         $this->assertNull($parser->eat());
     }
 
-    function testSpit()
+    function testShouldSpit()
     {
         $parser = $this->createParser("a\nbc");
 
@@ -203,21 +203,21 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', null, 1, 0, false, false);
     }
 
-    function testSpitReturnsNullAtBeginning()
+    function testSpitShouldReturnNullAtBeginning()
     {
         $parser = $this->createParser('abc');
 
         $this->assertNull($parser->spit());
     }
 
-    function testEatChar()
+    function testShouldEatChar()
     {
         $parser = $this->createParser('abc');
 
         $this->assertParserMethodOutcome($parser, $parser->eatChar('a'), 'b', 'b');
     }
 
-    function testEatCharThrowsExceptionOnUnexpectedChar()
+    function testEatCharShouldThrowExceptionOnUnexpectedChar()
     {
         $parser = $this->createParser('abc');
 
@@ -227,7 +227,7 @@ abstract class ParserTest extends TestCase
         $parser->eatChar('x');
     }
 
-    function testEatCharThrowsExceptionAtEnd()
+    function testEatCharShouldThrowExceptionAtEnd()
     {
         $parser = $this->createParser();
 
@@ -237,7 +237,7 @@ abstract class ParserTest extends TestCase
         $parser->eatChar('x');
     }
 
-    function testEatEol()
+    function testShouldEatEol()
     {
         $parser = $this->createParser("\nx");
         $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\n", 'x');
@@ -249,7 +249,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\r", 'x');
     }
 
-    function testTryEatChar()
+    function testShouldTryEatChar()
     {
         $parser = $this->createParser('abc');
 
@@ -257,7 +257,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserMethodOutcome($parser, $parser->tryEatChar('x'), false, 'b');
     }
 
-    function testEatRest()
+    function testShouldEatRest()
     {
         $parser = $this->createParser('abc');
 
@@ -267,7 +267,7 @@ abstract class ParserTest extends TestCase
     /**
      * @dataProvider provideEatTypeSamples
      */
-    function testEatType(int $type, string $data, string $expectedOutput)
+    function testShouldEatType(int $type, string $data, string $expectedOutput)
     {
         $parser = $this->createParser($data);
 
@@ -286,7 +286,7 @@ abstract class ParserTest extends TestCase
         ];
     }
 
-    function testEatTypes()
+    function testShouldEatTypes()
     {
         $parser = $this->createParser('foo123bar+');
 
@@ -298,7 +298,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserMethodOutcome($parser, $parser->eatTypes($typeMap), 'foo123bar', '+');
     }
 
-    function testEatUntil()
+    function testShouldEatUntil()
     {
         $parser = $this->createParser('abc,def;ghi');
 
@@ -306,7 +306,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserMethodOutcome($parser, $parser->eatUntil([',' => 0, ';' => 1], false, true), 'def', ';');
     }
 
-    function testEatUntilWithDisallowedEnd()
+    function testEatShouldThrowExceptionAtEndIfEndIsNotAllowed()
     {
         $parser = $this->createParser('abc');
 
@@ -315,7 +315,7 @@ abstract class ParserTest extends TestCase
         $parser->eatUntil([',' => 0, ';' => 1], true, false);
     }
 
-    function testEatUntilEol()
+    function testShouldEatUntilEol()
     {
         $parser = $this->createParser("abc\r\nd\r\n");
 
@@ -323,7 +323,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserMethodOutcome($parser, $parser->eatUntilEol(false), 'd', "\r");
     }
 
-    function testEatWs()
+    function testShouldEatWs()
     {
         $parser = $this->createParser("    \na");
 
@@ -332,7 +332,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame('a', $parser->char);
     }
 
-    function testEatWsNoNewlines()
+    function testShouldEatWsWithoutNewlines()
     {
         $parser = $this->createParser("    \na");
 
@@ -341,7 +341,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame("\n", $parser->char);
     }
 
-    function testExpectChar()
+    function testShouldExpectChar()
     {
         $parser = $this->createParser('a');
 
@@ -350,7 +350,7 @@ abstract class ParserTest extends TestCase
         $this->addToAssertionCount(1); // no exception was thrown => ok
     }
 
-    function testExpectCharThrowsExceptionOnUnexpectedChar()
+    function testExpectCharShouldThrowExceptionOnUnexpectedChar()
     {
         $parser = $this->createParser('a');
 
@@ -359,7 +359,7 @@ abstract class ParserTest extends TestCase
         $parser->expectChar('x');
     }
 
-    function testExpectCharThrowsExceptionOnUnexpectedEnd()
+    function testExpectCharShouldThrowExceptionOnUnexpectedEnd()
     {
         $parser = $this->createParser('');
 
@@ -368,7 +368,7 @@ abstract class ParserTest extends TestCase
         $parser->expectChar('x');
     }
 
-    function testExpectCharType()
+    function testShouldExpectCharType()
     {
         $parser = $this->createParser('a');
 
@@ -377,7 +377,7 @@ abstract class ParserTest extends TestCase
         $this->addToAssertionCount(1); // no exception was thrown => ok
     }
 
-    function testExpectCharTypeThrowsExceptionOnUnexpectedChar()
+    function testExpectCharTypeShouldThrowExceptionOnUnexpectedChar()
     {
         $parser = $this->createParser('a');
 
@@ -386,7 +386,7 @@ abstract class ParserTest extends TestCase
         $parser->expectCharType(Parser::CHAR_NUM);
     }
 
-    function testExpectEnd()
+    function testShouldExpectEnd()
     {
         $parser = $this->createParser('');
 
@@ -395,7 +395,7 @@ abstract class ParserTest extends TestCase
         $this->addToAssertionCount(1); // no exception was thrown => ok
     }
 
-    function testExpectEndThrowsExceptionOnUnexpectedEnd()
+    function testExpectEndShouldThrowExceptionOnUnexpectedEnd()
     {
         $parser = $this->createParser('not an end');
 
@@ -404,7 +404,7 @@ abstract class ParserTest extends TestCase
         $parser->expectEnd();
     }
 
-    function testExpectNotEnd()
+    function testShouldExpectNotEnd()
     {
         $parser = $this->createParser('not an end');
 
@@ -413,7 +413,7 @@ abstract class ParserTest extends TestCase
         $this->addToAssertionCount(1); // no exception was thrown => ok
     }
 
-    function testExpectNotEndThrowsExceptionOnUnexpectedEnd()
+    function testExpectNotEndShouldThrowExceptionOnUnexpectedEnd()
     {
         $parser = $this->createParser('');
 
@@ -422,7 +422,7 @@ abstract class ParserTest extends TestCase
         $parser->expectNotEnd();
     }
 
-    function testSeekForward()
+    function testShouldSeekForward()
     {
         $parser = $this->createParser("abc\ndef");
 
@@ -436,7 +436,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, null, 'f', 2, 7, false, true);
     }
 
-    function testSeekBackward()
+    function testShouldSeekBackward()
     {
         $parser = $this->createParser("abc\ndef");
 
@@ -450,7 +450,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'c', 'b', 1, 2, false, false);
     }
 
-    function testSeekMaintainsCorrectLineNumber()
+    function testSeekShouldMaintainCorrectLineNumber()
     {
         $parser = $this->createParser("a\nb\nc\nd");
 
@@ -461,7 +461,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame(1, $parser->line);
     }
 
-    function testSeekZeroOffsetDoesNothing()
+    function testSeekWithZeroOffsetShouldDoNothing()
     {
         $parser = $this->createParser('baz');
 
@@ -472,7 +472,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', 'b', 1, 1, false, false);
     }
 
-    function testSeekThrowsExceptionIfOutOfBoundsPositive()
+    function testSeekShouldThrowExceptionIfOutOfBoundsPositive()
     {
         $parser = $this->createParser('abc');
 
@@ -481,7 +481,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(100);
     }
 
-    function testSeekThrowsExceptionIfOutOfBoundsNegative()
+    function testSeekShouldThrowExceptionIfOutOfBoundsNegative()
     {
         $parser = $this->createParser('abc');
 
@@ -490,7 +490,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(-100);
     }
 
-    function testSeekAbsolute()
+    function testShouldSeekAbsolute()
     {
         $parser = $this->createParser('baz');
 
@@ -503,7 +503,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'b', null, 1, 0, false, false);
     }
 
-    function testSeekAbsoluteThrowsExceptionIfOutOfBoundsPositive()
+    function testSeekAbsoluteShouldThrowExceptionIfOutOfBoundsPositive()
     {
         $parser = $this->createParser('abc');
 
@@ -512,7 +512,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(100, true);
     }
 
-    function testSeekAbsoluteThrowsExceptionIfOutOfBoundsNegative()
+    function testSeekAbsoluteShouldThrowExceptionIfOutOfBoundsNegative()
     {
         $parser = $this->createParser('abc');
 
@@ -521,7 +521,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(-100, true);
     }
 
-    function testJumpForward()
+    function testShouldJumpForward()
     {
         $parser = $this->createParser("abc\ndef", false);
 
@@ -535,7 +535,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, null, 'f', null, 7, false, true);
     }
 
-    function testJumpBackward()
+    function testShouldJumpBackward()
     {
         $parser = $this->createParser("abc\ndef", false);
 
@@ -549,7 +549,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, "\n", 'c', null, 3, true, false);
     }
 
-    function testJumpIgnoresLineNumber()
+    function testJumpShouldIgnoreLineNumber()
     {
         $parser = $this->createParser("a\nb\nc\nd", false);
 
@@ -560,7 +560,7 @@ abstract class ParserTest extends TestCase
         $this->assertNull($parser->line);
     }
 
-    function testJumpZeroOffsetDoesNothing()
+    function testJumpWithZeroOffsetShouldDoNothing()
     {
         $parser = $this->createParser('baz', false);
 
@@ -571,7 +571,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', 'b', null, 1, false, false);
     }
 
-    function testJumpThrowsExceptionIfOutOfBoundsPositive()
+    function testJumpShouldThrowExceptionIfOutOfBoundsPositive()
     {
         $parser = $this->createParser('abc', false);
 
@@ -580,7 +580,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(100);
     }
 
-    function testJumpThrowsExceptionIfOutOfBoundsNegative()
+    function testJumpShouldThrowExceptionIfOutOfBoundsNegative()
     {
         $parser = $this->createParser('abc', false);
 
@@ -589,7 +589,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(-100);
     }
 
-    function testJumpAbsolute()
+    function testShouldJumpAbsolute()
     {
         $parser = $this->createParser('baz', false);
 
@@ -602,7 +602,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'b', null, null, 0, false, false);
     }
 
-    function testJumpAbsoluteThrowsExceptionIfOutOfBoundsPositive()
+    function testJumpAbsoluteShouldThrowExceptionIfOutOfBoundsPositive()
     {
         $parser = $this->createParser('abc', false);
 
@@ -611,7 +611,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(100, true);
     }
 
-    function testJumpAbsoluteThrowsExceptionIfOutOfBoundsNegative()
+    function testJumpAbsoluteShouldThrowExceptionIfOutOfBoundsNegative()
     {
         $parser = $this->createParser('abc', false);
 
@@ -620,7 +620,7 @@ abstract class ParserTest extends TestCase
         $parser->seek(-100, true);
     }
 
-    function testRewind()
+    function testShouldRewind()
     {
         $parser = $this->createParser("a\nabc");
 
@@ -630,7 +630,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', null, 1, 0, false, false);
     }
 
-    function testReset()
+    function testShouldReset()
     {
         $parser = $this->createParser("a\nabc");
 
@@ -642,7 +642,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame(0, $parser->countStates());
     }
 
-    function testPeek()
+    function testShouldPeek()
     {
         $parser = $this->createParser('abc');
 
@@ -653,7 +653,7 @@ abstract class ParserTest extends TestCase
         $this->assertNull($parser->peek(3));
     }
 
-    function testChunk()
+    function testShouldChunk()
     {
         $parser = $this->createParser('aaaaabbbbbcccccx');
 
@@ -677,28 +677,28 @@ abstract class ParserTest extends TestCase
         $this->assertSame('', $parser->getChunk(100, 5));
     }
 
-    function testChunkThrowsExceptionOnNegativePosition()
+    function testChunkShouldThrowExceptionOnNegativePosition()
     {
         $this->expectException(InputException::class);
 
         $this->createParser('Hello world')->getChunk(-1, 5);
     }
 
-    function testChunkThrowsExceptionOnZeroLength()
+    function testChunkShouldThrowExceptionOnZeroLength()
     {
         $this->expectException(InputException::class);
 
         $this->createParser('Hello world')->getChunk(0, 0);
     }
 
-    function testChunkThrowsExceptionOnNegativeLength()
+    function testChunkShouldThrowExceptionOnNegativeLength()
     {
         $this->expectException(InputException::class);
 
         $this->createParser('Hello world')->getChunk(0, -1);
     }
 
-    function testStates()
+    function testShouldManageStates()
     {
         $parser = $this->createParser("Lorem\nIpsum\nDolor\n");
 
@@ -737,7 +737,7 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'p', 'I', 2, 7, false, false, []);
     }
 
-    function testRevertStateThrowsExceptionIfNoStates()
+    function testRevertStateShouldThrowExceptionIfNoStatesExist()
     {
         $parser = $this->createParser();
 
@@ -746,7 +746,7 @@ abstract class ParserTest extends TestCase
         $parser->revertState();
     }
 
-    function testPopStateThrowsExceptionIfNoStates()
+    function testPopStateShouldThrowExceptionIfNoStatesExist()
     {
         $parser = $this->createParser();
 
@@ -755,7 +755,7 @@ abstract class ParserTest extends TestCase
         $parser->popState();
     }
 
-    function testClearStates()
+    function testShouldClearStates()
     {
         $parser = $this->createParser();
 
@@ -765,7 +765,7 @@ abstract class ParserTest extends TestCase
         $this->assertSame(0, $parser->countStates());
     }
 
-    function testLineTrackingDisabled()
+    function testShouldNotTrackLinesIfDisabled()
     {
         $parser = $this->createParser("foo\nbar", false);
 

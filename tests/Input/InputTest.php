@@ -17,7 +17,7 @@ abstract class InputTest extends TestCase
      */
     abstract protected function isTotalLengthKnown(): bool;
 
-    function testProperties()
+    function testShouldGetProperties()
     {
         $input = $this->createInput('hello');
 
@@ -26,14 +26,14 @@ abstract class InputTest extends TestCase
         $this->assertInternalType('integer', $input->offset);
     }
 
-    function testGetTotalLength()
+    function testShouldGetTotalLength()
     {
         $input = $this->createInput('hello');
 
         $this->assertSame($this->isTotalLengthKnown() ? 5 : null, $input->getTotalLength());
     }
 
-    function testLoadData()
+    function testShouldLoadData()
     {
         $data = <<<INPUT
 Lorem ipsum dolor sit amet consectetuer elit vel risus Nulla nisl.
@@ -59,7 +59,7 @@ INPUT;
         $this->assertSame(strrev($data), $read);
     }
 
-    function testChunk()
+    function testShouldChunk()
     {
         $input = $this->createInput('aaaaabbbbbcccccx');
 
@@ -77,21 +77,21 @@ INPUT;
         $this->assertSame('', $input->getChunk(100, 5));
     }
 
-    function testChunkThrowsExceptionOnNegativePosition()
+    function testChunkShouldThrowExceptionOnNegativePosition()
     {
         $this->expectException(InputException::class);
 
         $this->createInput('aaa')->getChunk(-1, 5);
     }
 
-    function testChunkThrowsExceptionOnZeroLength()
+    function testChunkShouldThrowExceptionOnZeroLength()
     {
         $this->expectException(InputException::class);
 
         $this->createInput('aaa')->getChunk(0, 0);
     }
 
-    function testChunkThrowsExceptionOnNegativeLength()
+    function testChunkShouldThrowExceptionOnNegativeLength()
     {
         $this->expectException(InputException::class);
 

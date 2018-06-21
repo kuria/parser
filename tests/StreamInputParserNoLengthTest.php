@@ -9,7 +9,7 @@ class StreamInputParserNoLengthTest extends StreamInputParserTest
         return false;
     }
 
-    function testGetLength()
+    function testShouldGetLength()
     {
         $this->assertNull($this->createParser('')->getLength());
         $this->assertNull($this->createParser('hello')->getLength());
