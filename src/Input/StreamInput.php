@@ -105,22 +105,17 @@ class StreamInput extends Input
         } else {
             // not loaded, check cache (if enabled)
             if ($this->chunkCacheSize > 0 && isset($this->chunkCache["chunk_{$chunkOffset}"])) {
-                // cache hit
-                if ($this->seeded) {
-                    // swap current chunk with the cached one
-                    $currentChunkOffset = $this->offset;
-                    $currentChunk = $this->data;
-                    $currentChunkLength = $this->length;
+                // cache hit (can only happen if already seeded)
+                // swap current chunk with the cached one
+                $currentChunkOffset = $this->offset;
+                $currentChunk = $this->data;
+                $currentChunkLength = $this->length;
 
-                    $this->loadCachedChunk($chunkOffset);
-                    $this->putChunkInCache($currentChunk, $currentChunkOffset, $currentChunkLength);
-                } else {
-                    // just load the cached chunk
-                    $this->loadCachedChunk($chunkOffset);
-                }
+                $this->loadCachedChunk($chunkOffset);
+                $this->putChunkInCache($currentChunk, $currentChunkOffset, $currentChunkLength);
 
                 // check position
-                $success =  isset($this->data[$position - $chunkOffset]);
+                $success = isset($this->data[$position - $chunkOffset]);
             } else {
                 // load from stream
                 if ($this->seeded && $this->chunkCacheSize > 0) {
