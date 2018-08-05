@@ -4,10 +4,19 @@ namespace Kuria\Parser\Exception;
 
 class UnexpectedCharacterTypeException extends FailedExpectationException
 {
-    protected const QUOTE_EXPECTATIONS = false;
-
-    function __construct(string $actualCharTypeName, ?array $expected = null, int $offset, ?int $line = null, ?\Throwable $previous = null)
-    {
-        parent::__construct($actualCharTypeName, $expected, $offset, $line, $previous);
+    function __construct(
+        string $actualCharTypeName,
+        ?array $expected = null,
+        int $parserPosition,
+        ?int $parserLine = null,
+        ?\Throwable $previous = null
+    ) {
+        parent::__construct(
+            $actualCharTypeName,
+            ExceptionHelper::formatList($expected, false),
+            $parserPosition,
+            $parserLine,
+            $previous
+        );
     }
 }

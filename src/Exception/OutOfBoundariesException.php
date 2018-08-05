@@ -4,8 +4,8 @@ namespace Kuria\Parser\Exception;
 
 class OutOfBoundariesException extends ParseException
 {
-    function __construct(int $offset, ?\Throwable $previous = null)
+    function __construct(int $parserPosition, ?\Throwable $previous = null)
     {
-        parent::__construct('Out of boundaries', $offset, null, $previous);
+        parent::__construct('Out of boundaries', $parserPosition, null, $previous);
     }
 }

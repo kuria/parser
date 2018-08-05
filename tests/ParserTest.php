@@ -2,7 +2,6 @@
 
 namespace Kuria\Parser;
 
-use Kuria\Parser\Exception\InputException;
 use Kuria\Parser\Exception\NoActiveStatesException;
 use Kuria\Parser\Exception\OutOfBoundariesException;
 use Kuria\Parser\Exception\ParseException;
@@ -10,33 +9,14 @@ use Kuria\Parser\Exception\UnexpectedCharacterException;
 use Kuria\Parser\Exception\UnexpectedCharacterTypeException;
 use Kuria\Parser\Exception\UnexpectedEndException;
 use Kuria\Parser\Exception\UnknownCharacterTypeException;
-use Kuria\Parser\Input\Input;
 use PHPUnit\Framework\Constraint\Exception as ExceptionConstraint;
 use PHPUnit\Framework\Constraint\ExceptionMessage;
 use PHPUnit\Framework\TestCase;
 
-abstract class ParserTest extends TestCase
+class ParserTest extends TestCase
 {
     /** @var array|null */
     private $expectedParseException;
-
-    protected function createParser(string $data = '', bool $trackLineNumber = true): Parser
-    {
-        return new Parser($this->createInput($data), $trackLineNumber);
-    }
-
-    abstract protected function createInput(string $data): Input;
-
-    function testShouldCreateFromString()
-    {
-        $parserClass = get_class($this->createParser());
-
-        $parser = $parserClass::fromString("\nhello", false);
-
-        $this->assertInstanceOf($parserClass, $parser);
-        $this->assertNull($parser->line);
-        $this->assertSame("\nhello", $parser->eatRest());
-    }
 
     function testShouldIntializeState()
     {
@@ -52,7 +32,23 @@ abstract class ParserTest extends TestCase
 
     function testShouldGetInput()
     {
-        $this->assertInstanceOf(Input::class, $this->createParser()->getInput());
+        $this->assertSame('foo bar', $this->createParser('foo bar')->getInput());
+    }
+
+    function testShouldReplaceInput()
+    {
+        $parser = $this->createParser("baz\nqux");
+
+        $parser->eatRest();
+        $parser->vars['foo'] = 'bar';
+
+        $this->assertSame("baz\nqux", $parser->getInput());
+        $this->assertParserState($parser, null, 'x', 2, 7, false, true, ['foo' => 'bar']);
+
+        $parser->setInput('quux quuz');
+
+        $this->assertSame('quux quuz', $parser->getInput());
+        $this->assertParserState($parser, 'q', null, 1, 0, false, false, []);
     }
 
     function testShouldGetLength()
@@ -67,116 +63,55 @@ abstract class ParserTest extends TestCase
         $this->assertFalse($this->createParser('hello', false)->isTrackingLineNumbers());
     }
 
-    function testShouldGetCharTypeForCharacter()
+    function testShouldNotTrackLinesIfDisabled()
     {
-        $parser = $this->createParser();
+        $parser = $this->createParser("foo\nbar", false);
 
-        foreach ($parser::getCharTypeMap() as $char => $charType) {
+        $this->assertNull($parser->line);
+        $parser->eatRest();
+        $this->assertNull($parser->line);
+    }
+
+    function testShouldGetCurrentCharType()
+    {
+        $parser = new Parser(implode(array_keys(Parser::CHAR_TYPE_MAP)));
+
+        while (!$parser->end) {
             $this->assertSame(
-                $charType,
-                $parser->getCharType((string) $char),
+                Parser::CHAR_TYPE_MAP[$parser->char],
+                $parser->type(),
                 sprintf(
-                    'ASCII %d should be %s',
-                    ord((string) $char),
-                    $parser->getCharTypeName($charType)
+                    'Byte %d should be %s',
+                    $parser->i,
+                    Parser::getCharTypeName(Parser::CHAR_TYPE_MAP[$parser->char])
                 )
             );
+
+            $parser->eat();
         }
+
+        $this->assertSame(256, $parser->i);
     }
 
-    function testShouldGetCharTypeForNull()
+    function testShouldCheckCurrentCharType()
     {
-        $parser = $this->createParser();
+        $parser = new Parser(implode(array_keys(Parser::CHAR_TYPE_MAP)));
 
-        $this->assertSame(Parser::CHAR_NONE, $parser->getCharType(null), 'NULL should be CHAR_NONE');
+        while (!$parser->end) {
+            $this->assertTrue($parser->is($parser->type()));
+
+            $parser->eat();
+        }
+
+        $this->assertSame(256, $parser->i);
     }
 
-    /**
-     * @dataProvider provideCharTypes
-     */
-    function testShouldGetCharTypeName(int $type, string $expectedName)
+    function testShouldCheckCurretCharTypeAgainstMultipleOptions()
     {
-        $parser = $this->createParser();
+        $parser = new Parser('5');
 
-        $this->assertSame($expectedName, $parser->getCharTypeName($type));
-    }
-
-    function provideCharTypes()
-    {
-        return [
-            [Parser::CHAR_NONE, 'CHAR_NONE'],
-            [Parser::CHAR_WS, 'CHAR_WS'],
-            [Parser::CHAR_NUM, 'CHAR_NUM'],
-            [Parser::CHAR_IDT, 'CHAR_IDT'],
-            [Parser::CHAR_CTRL, 'CHAR_CTRL'],
-            [Parser::CHAR_OTHER, 'CHAR_OTHER'],
-        ];
-    }
-
-    function testShouldThrowExceptionOnUnknownCharType()
-    {
-        $parser = $this->createParser();
-
-        $this->expectException(UnknownCharacterTypeException::class);
-
-        $parser->getCharTypeName(12345);
-    }
-
-    /**
-     * @dataProvider provideEolSamples
-     */
-    function testShouldDetectEol(string $data, string $expectedEol)
-    {
-        $parser = $this->createParser($data);
-
-        $this->assertSame($expectedEol, $parser->detectEol());
-    }
-
-    function provideEolSamples(): array
-    {
-        return [
-            ["Lorem\nIpsum\nDolor\n", "\n"],
-            ["Lorem\r\nIpsum\r\nDolor\r\n", "\r\n"],
-            ["Lorem\rIpsum\rDolor\r", "\r"],
-        ];
-    }
-
-    function testShouldDetectEolWithoutNewline()
-    {
-        $parser = $this->createParser('no-newlines-here');
-
-        $this->assertNull($parser->detectEol());
-    }
-
-    function testShift()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->assertParserMethodOutcome($parser, $parser->shift(), 'b', 'b');
-    }
-
-    function testShiftReturnsNullAtEnd()
-    {
-        $parser = $this->createParser('');
-
-        $this->assertNull($parser->shift());
-    }
-
-    function testShouldUnshift()
-    {
-        $parser = $this->createParser("a\nbc");
-
-        $parser->eat(); // eat "a"
-
-        $this->assertParserMethodOutcome($parser, $parser->unshift(), 'a', 'a');
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
-    }
-
-    function testUnshiftShouldReturnNullAtBeginning()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->assertNull($parser->unshift());
+        $this->assertTrue($parser->is(Parser::C_STR, Parser::C_NUM));
+        $this->assertFalse($parser->is(Parser::C_STR, Parser::C_SPECIAL));
     }
 
     function testShouldEat()
@@ -210,216 +145,46 @@ abstract class ParserTest extends TestCase
         $this->assertNull($parser->spit());
     }
 
-    function testShouldEatChar()
+    function testShouldShift()
     {
         $parser = $this->createParser('abc');
 
-        $this->assertParserMethodOutcome($parser, $parser->eatChar('a'), 'b', 'b');
+        $this->assertParserMethodOutcome($parser, $parser->shift(), 'b', 'b');
     }
 
-    function testEatCharShouldThrowExceptionOnUnexpectedChar()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->expectException(UnexpectedCharacterException::class);
-        $this->expectExceptionMessage('Unexpected "a", expected "x" on line 1 (at offset 0)');
-
-        $parser->eatChar('x');
-    }
-
-    function testEatCharShouldThrowExceptionAtEnd()
-    {
-        $parser = $this->createParser();
-
-        $this->expectException(UnexpectedEndException::class);
-        $this->expectExceptionMessage('Unexpected end, expected "x" on line 1 (at offset 0)');
-
-        $parser->eatChar('x');
-    }
-
-    function testShouldEatEol()
-    {
-        $parser = $this->createParser("\nx");
-        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\n", 'x');
-
-        $parser = $this->createParser("\r\nx");
-        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\r\n", 'x');
-
-        $parser = $this->createParser("\rx");
-        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\r", 'x');
-    }
-
-    function testShouldTryEatChar()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->assertParserMethodOutcome($parser, $parser->tryEatChar('a'), true, 'b');
-        $this->assertParserMethodOutcome($parser, $parser->tryEatChar('x'), false, 'b');
-    }
-
-    function testShouldEatRest()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->assertParserMethodOutcome($parser, $parser->eatRest(), 'abc', null);
-    }
-
-    /**
-     * @dataProvider provideEatTypeSamples
-     */
-    function testShouldEatType(int $type, string $data, string $expectedOutput)
-    {
-        $parser = $this->createParser($data);
-
-        $this->assertParserMethodOutcome($parser, $parser->eatType($type), $expectedOutput);
-    }
-
-    function provideEatTypeSamples(): array
-    {
-        return [
-            [Parser::CHAR_WS, '  foo', '  '],
-            [Parser::CHAR_NUM, '1234x', '1234'],
-            [Parser::CHAR_IDT, 'foo_bar+', 'foo_bar'],
-            [Parser::CHAR_CTRL, '++foo', '++'],
-            [Parser::CHAR_OTHER, chr(0) . chr(1) . 'a', chr(0) . chr(1)],
-            [Parser::CHAR_NONE, 'foo', ''],
-        ];
-    }
-
-    function testShouldEatTypes()
-    {
-        $parser = $this->createParser('foo123bar+');
-
-        $typeMap = [
-            Parser::CHAR_IDT => 0,
-            Parser::CHAR_NUM => 1,
-        ];
-
-        $this->assertParserMethodOutcome($parser, $parser->eatTypes($typeMap), 'foo123bar', '+');
-    }
-
-    function testShouldEatUntil()
-    {
-        $parser = $this->createParser('abc,def;ghi');
-
-        $this->assertParserMethodOutcome($parser, $parser->eatUntil(',', true, true), 'abc', 'd');
-        $this->assertParserMethodOutcome($parser, $parser->eatUntil([',' => 0, ';' => 1], false, true), 'def', ';');
-    }
-
-    function testEatShouldThrowExceptionAtEndIfEndIsNotAllowed()
-    {
-        $parser = $this->createParser('abc');
-
-        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end, expected "," or ";" on line 1 (at offset 3)', 3, 1);
-
-        $parser->eatUntil([',' => 0, ';' => 1], true, false);
-    }
-
-    function testShouldEatUntilEol()
-    {
-        $parser = $this->createParser("abc\r\nd\r\n");
-
-        $this->assertParserMethodOutcome($parser, $parser->eatUntilEol(true), 'abc', 'd');
-        $this->assertParserMethodOutcome($parser, $parser->eatUntilEol(false), 'd', "\r");
-    }
-
-    function testShouldEatWs()
-    {
-        $parser = $this->createParser("    \na");
-
-        $parser->eatWs(true);
-
-        $this->assertSame('a', $parser->char);
-    }
-
-    function testShouldEatWsWithoutNewlines()
-    {
-        $parser = $this->createParser("    \na");
-
-        $parser->eatWs(false);
-
-        $this->assertSame("\n", $parser->char);
-    }
-
-    function testShouldExpectChar()
-    {
-        $parser = $this->createParser('a');
-
-        $parser->expectChar('a');
-
-        $this->addToAssertionCount(1); // no exception was thrown => ok
-    }
-
-    function testExpectCharShouldThrowExceptionOnUnexpectedChar()
-    {
-        $parser = $this->createParser('a');
-
-        $this->expectParseException(UnexpectedCharacterException::class, 'Unexpected "a", expected "x" on line 1 (at offset 0)', 0, 1);
-
-        $parser->expectChar('x');
-    }
-
-    function testExpectCharShouldThrowExceptionOnUnexpectedEnd()
+    function testShiftShouldReturnNullAtEnd()
     {
         $parser = $this->createParser('');
 
-        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end, expected "x" on line 1 (at offset 0)', 0, 1);
-
-        $parser->expectChar('x');
+        $this->assertNull($parser->shift());
     }
 
-    function testShouldExpectCharType()
+    function testShouldUnshift()
     {
-        $parser = $this->createParser('a');
+        $parser = $this->createParser("a\nbc");
 
-        $parser->expectCharType(Parser::CHAR_IDT);
+        $parser->eat(); // eat "a"
 
-        $this->addToAssertionCount(1); // no exception was thrown => ok
+        $this->assertParserMethodOutcome($parser, $parser->unshift(), 'a', 'a');
+        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
     }
 
-    function testExpectCharTypeShouldThrowExceptionOnUnexpectedChar()
+    function testUnshiftShouldReturnNullAtBeginning()
     {
-        $parser = $this->createParser('a');
+        $parser = $this->createParser('abc');
 
-        $this->expectParseException(UnexpectedCharacterTypeException::class, 'Unexpected CHAR_IDT, expected CHAR_NUM on line 1 (at offset 0)', 0, 1);
-
-        $parser->expectCharType(Parser::CHAR_NUM);
+        $this->assertNull($parser->unshift());
     }
 
-    function testShouldExpectEnd()
+    function testShouldPeek()
     {
-        $parser = $this->createParser('');
+        $parser = $this->createParser('abc');
 
-        $parser->expectEnd();
-
-        $this->addToAssertionCount(1); // no exception was thrown => ok
-    }
-
-    function testExpectEndShouldThrowExceptionOnUnexpectedEnd()
-    {
-        $parser = $this->createParser('not an end');
-
-        $this->expectParseException(UnexpectedCharacterException::class, 'Unexpected "n", expected "end" on line 1 (at offset 0)', 0, 1);
-
-        $parser->expectEnd();
-    }
-
-    function testShouldExpectNotEnd()
-    {
-        $parser = $this->createParser('not an end');
-
-        $parser->expectNotEnd();
-
-        $this->addToAssertionCount(1); // no exception was thrown => ok
-    }
-
-    function testExpectNotEndShouldThrowExceptionOnUnexpectedEnd()
-    {
-        $parser = $this->createParser('');
-
-        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end on line 1 (at offset 0)', 0, 1);
-
-        $parser->expectNotEnd();
+        $this->assertNull($parser->peek(-1));
+        $this->assertSame('a', $parser->peek(0));
+        $this->assertSame('b', $parser->peek(1));
+        $this->assertSame('c', $parser->peek(2));
+        $this->assertNull($parser->peek(3));
     }
 
     function testShouldSeekForward()
@@ -472,11 +237,22 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', 'b', 1, 1, false, false);
     }
 
+    function testSeekToIdenticalPositionShouldDoNothing()
+    {
+        $parser = $this->createParser('baz');
+
+        $parser->eat();
+
+        $this->assertParserState($parser, 'a', 'b', 1, 1, false, false);
+        $parser->seek(1, true);
+        $this->assertParserState($parser, 'a', 'b', 1, 1, false, false);
+    }
+
     function testSeekShouldThrowExceptionIfOutOfBoundsPositive()
     {
         $parser = $this->createParser('abc');
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset 100)', 100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position 100)', 100);
 
         $parser->seek(100);
     }
@@ -485,7 +261,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc');
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset -100)', -100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position -100)', -100);
 
         $parser->seek(-100);
     }
@@ -507,7 +283,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc');
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset 100)', 100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position 100)', 100);
 
         $parser->seek(100, true);
     }
@@ -516,7 +292,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc');
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset -100)', -100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position -100)', -100);
 
         $parser->seek(-100, true);
     }
@@ -575,7 +351,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc', false);
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset 100)', 100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position 100)', 100);
 
         $parser->seek(100);
     }
@@ -584,7 +360,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc', false);
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset -100)', -100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position -100)', -100);
 
         $parser->seek(-100);
     }
@@ -606,7 +382,7 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc', false);
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset 100)', 100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position 100)', 100);
 
         $parser->seek(100, true);
     }
@@ -615,9 +391,22 @@ abstract class ParserTest extends TestCase
     {
         $parser = $this->createParser('abc', false);
 
-        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at offset -100)', -100);
+        $this->expectParseException(OutOfBoundariesException::class, 'Out of boundaries (at position -100)', -100);
 
         $parser->seek(-100, true);
+    }
+
+    function testShouldReset()
+    {
+        $parser = $this->createParser("a\nabc");
+
+        $parser->eat();
+        $parser->pushState();
+        $parser->vars['foo'] = 'bar';
+        $parser->reset();
+
+        $this->assertParserState($parser, 'a', null, 1, 0, false, false, []);
+        $this->assertSame(0, $parser->countStates());
     }
 
     function testShouldRewind()
@@ -630,72 +419,190 @@ abstract class ParserTest extends TestCase
         $this->assertParserState($parser, 'a', null, 1, 0, false, false);
     }
 
-    function testShouldReset()
-    {
-        $parser = $this->createParser("a\nabc");
-
-        $parser->eat();
-        $parser->pushState();
-        $parser->reset();
-
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
-        $this->assertSame(0, $parser->countStates());
-    }
-
-    function testShouldPeek()
+    function testShouldEatChar()
     {
         $parser = $this->createParser('abc');
 
-        $this->assertNull($parser->peek(-1));
-        $this->assertSame('a', $parser->peek(0));
-        $this->assertSame('b', $parser->peek(1));
-        $this->assertSame('c', $parser->peek(2));
-        $this->assertNull($parser->peek(3));
+        $this->assertParserMethodOutcome($parser, $parser->eatChar('a'), 'b', 'b');
     }
 
-    function testShouldChunk()
+    function testEatCharShouldThrowExceptionOnUnexpectedChar()
     {
-        $parser = $this->createParser('aaaaabbbbbcccccx');
+        $parser = $this->createParser('abc');
 
-        // chunking should just load data and do not affect parser state
-        $this->assertSame('aaaaa', $parser->getChunk(0, 5));
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
+        $this->expectException(UnexpectedCharacterException::class);
+        $this->expectExceptionMessage('Unexpected "a", expected "x" on line 1 (at position 0)');
 
-        $this->assertSame('aaaab', $parser->getChunk(1, 5));
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
-
-        $this->assertSame('bccccc', $parser->getChunk(9, 6));
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
-
-        $this->assertSame('bccccc', $parser->getChunk(9, 6));
-        $this->assertParserState($parser, 'a', null, 1, 0, false, false);
-
-        // chunks beyond available range should contain all available data
-        $this->assertSame('x', $parser->getChunk(15, 10));
-
-        // chunking past available range should yield an empty chunk
-        $this->assertSame('', $parser->getChunk(100, 5));
+        $parser->eatChar('x');
     }
 
-    function testChunkShouldThrowExceptionOnNegativePosition()
+    function testEatCharShouldThrowExceptionAtEnd()
     {
-        $this->expectException(InputException::class);
+        $parser = $this->createParser();
 
-        $this->createParser('Hello world')->getChunk(-1, 5);
+        $this->expectException(UnexpectedEndException::class);
+        $this->expectExceptionMessage('Unexpected end, expected "x" on line 1 (at position 0)');
+
+        $parser->eatChar('x');
     }
 
-    function testChunkShouldThrowExceptionOnZeroLength()
+    function testShouldTryEatChar()
     {
-        $this->expectException(InputException::class);
+        $parser = $this->createParser('abc');
 
-        $this->createParser('Hello world')->getChunk(0, 0);
+        $this->assertParserMethodOutcome($parser, $parser->tryEatChar('a'), true, 'b');
+        $this->assertParserMethodOutcome($parser, $parser->tryEatChar('x'), false, 'b');
     }
 
-    function testChunkShouldThrowExceptionOnNegativeLength()
+    /**
+     * @dataProvider provideEatTypeSamples
+     */
+    function testShouldEatType(int $type, string $input, string $expectedOutput)
     {
-        $this->expectException(InputException::class);
+        $parser = $this->createParser($input);
 
-        $this->createParser('Hello world')->getChunk(0, -1);
+        $this->assertParserMethodOutcome($parser, $parser->eatType($type), $expectedOutput);
+    }
+
+    function provideEatTypeSamples(): array
+    {
+        return [
+            // type, input, expectedOutput
+            [Parser::C_WS, '  foo', '  '],
+            [Parser::C_NUM, '1234x', '1234'],
+            [Parser::C_STR, 'foo_bar+', 'foo_bar'],
+            [Parser::C_SPECIAL, '++foo', '++'],
+            [Parser::C_CTRL, chr(0) . chr(1) . 'a', chr(0) . chr(1)],
+            [Parser::C_NONE, 'foo', ''],
+        ];
+    }
+
+    function testShouldEatTypes()
+    {
+        $parser = $this->createParser('foo123bar+');
+
+        $typeMap = [
+            Parser::C_STR => 0,
+            Parser::C_NUM => 1,
+        ];
+
+        $this->assertParserMethodOutcome($parser, $parser->eatTypes($typeMap), 'foo123bar', '+');
+    }
+
+    function testShouldEatWs()
+    {
+        $parser = $this->createParser("    \na");
+
+        $parser->eatWs(true);
+
+        $this->assertSame('a', $parser->char);
+    }
+
+    function testShouldEatWsWithoutNewlines()
+    {
+        $parser = $this->createParser("    \na");
+
+        $parser->eatWs(false);
+
+        $this->assertSame("\n", $parser->char);
+    }
+
+    function testShouldEatUntil()
+    {
+        $parser = $this->createParser('abc,def;ghi');
+
+        $this->assertParserMethodOutcome($parser, $parser->eatUntil(',', true, true), 'abc', 'd');
+        $this->assertParserMethodOutcome($parser, $parser->eatUntil([',' => 0, ';' => 1], false, true), 'def', ';');
+    }
+
+    function testEatUntilShouldThrowExceptionAtEndIfEndIsNotAllowed()
+    {
+        $parser = $this->createParser('abc');
+
+        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end, expected "," or ";" on line 1 (at position 3)', 3, 1);
+
+        $parser->eatUntil([',' => 0, ';' => 1], true, false);
+    }
+
+    function testShouldEatUntilEol()
+    {
+        $parser = $this->createParser("abc\r\nd\r\n");
+
+        $this->assertParserMethodOutcome($parser, $parser->eatUntilEol(true), 'abc', 'd');
+        $this->assertParserMethodOutcome($parser, $parser->eatUntilEol(false), 'd', "\r");
+    }
+
+    function testShouldEatEol()
+    {
+        $parser = $this->createParser("\nx");
+        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\n", 'x');
+
+        $parser = $this->createParser("\r\nx");
+        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\r\n", 'x');
+
+        $parser = $this->createParser("\rx");
+        $this->assertParserMethodOutcome($parser, $parser->eatEol(), "\r", 'x');
+    }
+
+    function testShouldEatRest()
+    {
+        $parser = $this->createParser('abc');
+
+        $this->assertParserMethodOutcome($parser, $parser->eatRest(), 'abc', null);
+    }
+
+    function testShouldGetChunk()
+    {
+        $parser = $this->createParser('0123456789abcdef');
+
+        // getting a chunk should not affect parser state
+        $this->assertSame('01234', $parser->getChunk(0, 5));
+        $this->assertParserState($parser, '0', null, 1, 0, false, false);
+
+        $this->assertSame('12345', $parser->getChunk(1, 6));
+        $this->assertParserState($parser, '0', null, 1, 0, false, false);
+
+        $this->assertSame('9abcde', $parser->getChunk(9, 15));
+        $this->assertParserState($parser, '0', null, 1, 0, false, false);
+
+        $this->assertSame('9abcde', $parser->getChunk(9, 15));
+        $this->assertParserState($parser, '0', null, 1, 0, false, false);
+
+        // getting a partial or out-of-bounds chunk should return the available chars
+        $this->assertSame('f', $parser->getChunk(15, 100));
+        $this->assertSame('0', $parser->getChunk(-10, 1));
+        $this->assertSame('', $parser->getChunk(100, 105));
+        $this->assertSame('', $parser->getChunk(-105, -100));
+        $this->assertSame('', $parser->getChunk(3, 0));
+        $this->assertSame('', $parser->getChunk(0, 0));
+        $this->assertSame('', $parser->getChunk(1, 1));
+    }
+
+    /**
+     * @dataProvider provideEolSamples
+     */
+    function testShouldDetectEol(string $input, string $expectedEol)
+    {
+        $parser = $this->createParser($input);
+
+        $this->assertSame($expectedEol, $parser->detectEol());
+    }
+
+    function provideEolSamples(): array
+    {
+        return [
+            // input, expectedEol
+            ["Lorem\nIpsum\nDolor\n", "\n"],
+            ["Lorem\r\nIpsum\r\nDolor\r\n", "\r\n"],
+            ["Lorem\rIpsum\rDolor\r", "\r"],
+        ];
+    }
+
+    function testShouldDetectEolWithoutNewline()
+    {
+        $parser = $this->createParser('no-newlines-here');
+
+        $this->assertNull($parser->detectEol());
     }
 
     function testShouldManageStates()
@@ -719,13 +626,11 @@ abstract class ParserTest extends TestCase
 
         $parser->rewind();
         unset($parser->vars['foo']);
-        $charTypeAtEnd = $parser->charType;
         $this->assertParserState($parser, 'L', null, 1, 0, false, false, []);
 
         $parser->revertState();
         $this->assertParserState($parser, null, "\n", 4, 18, false, true, ['foo' => 'bar']);
         $this->assertSame(1, $parser->countStates());
-        $this->assertNotSame($charTypeAtEnd, $parser->charType);
 
         $parser->revertState();
         $this->assertParserState($parser, 'I', "\n", 2, 6, false, false, []);
@@ -765,19 +670,148 @@ abstract class ParserTest extends TestCase
         $this->assertSame(0, $parser->countStates());
     }
 
-    function testShouldNotTrackLinesIfDisabled()
+    function testShouldExpectEnd()
     {
-        $parser = $this->createParser("foo\nbar", false);
+        $parser = $this->createParser('');
 
-        $this->assertNull($parser->line);
-        $parser->eatRest();
-        $this->assertNull($parser->line);
+        $parser->expectEnd();
+
+        $this->addToAssertionCount(1); // no exception was thrown => ok
+    }
+
+    function testExpectEndShouldThrowExceptionOnUnexpectedEnd()
+    {
+        $parser = $this->createParser('not an end');
+
+        $this->expectParseException(UnexpectedCharacterException::class, 'Unexpected "n", expected "end" on line 1 (at position 0)', 0, 1);
+
+        $parser->expectEnd();
+    }
+
+    function testShouldExpectNotEnd()
+    {
+        $parser = $this->createParser('not an end');
+
+        $parser->expectNotEnd();
+
+        $this->addToAssertionCount(1); // no exception was thrown => ok
+    }
+
+    function testExpectNotEndShouldThrowExceptionOnUnexpectedEnd()
+    {
+        $parser = $this->createParser('');
+
+        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end on line 1 (at position 0)', 0, 1);
+
+        $parser->expectNotEnd();
+    }
+
+    function testShouldExpectChar()
+    {
+        $parser = $this->createParser('a');
+
+        $parser->expectChar('a');
+
+        $this->addToAssertionCount(1); // no exception was thrown => ok
+    }
+
+    function testExpectCharShouldThrowExceptionOnUnexpectedChar()
+    {
+        $parser = $this->createParser('a');
+
+        $this->expectParseException(UnexpectedCharacterException::class, 'Unexpected "a", expected "x" on line 1 (at position 0)', 0, 1);
+
+        $parser->expectChar('x');
+    }
+
+    function testExpectCharShouldThrowExceptionOnUnexpectedEnd()
+    {
+        $parser = $this->createParser('');
+
+        $this->expectParseException(UnexpectedEndException::class, 'Unexpected end, expected "x" on line 1 (at position 0)', 0, 1);
+
+        $parser->expectChar('x');
+    }
+
+    function testShouldExpectCharType()
+    {
+        $parser = $this->createParser('a');
+
+        $parser->expectCharType(Parser::C_STR);
+
+        $this->addToAssertionCount(1); // no exception was thrown => ok
+    }
+
+    function testExpectCharTypeShouldThrowExceptionOnUnexpectedChar()
+    {
+        $parser = $this->createParser('a');
+
+        $this->expectParseException(UnexpectedCharacterTypeException::class, 'Unexpected C_STR, expected C_NUM on line 1 (at position 0)', 0, 1);
+
+        $parser->expectCharType(Parser::C_NUM);
+    }
+
+    function testShouldGetCharType()
+    {
+        foreach (Parser::CHAR_TYPE_MAP as $char => $charType) {
+            $this->assertSame(
+                $charType,
+                Parser::getCharType((string) $char),
+                sprintf(
+                    'Byte %d should be %s',
+                    ord((string) $char),
+                    Parser::getCharTypeName($charType)
+                )
+            );
+        }
+
+        $this->assertSame(Parser::C_NONE, Parser::getCharType(null), 'NULL should be C_NONE');
+    }
+    function testShouldThrowExceptionWhenGettingCharTypeForString()
+    {
+        $this->expectException(UnknownCharacterTypeException::class);
+        $this->expectExceptionMessage('Character "foo" is not mapped to any type');
+
+        Parser::getCharType('foo');
+    }
+
+    /**
+     * @dataProvider provideCharTypes
+     */
+    function testShouldGetCharTypeName(int $type, string $expectedName)
+    {
+        $this->assertSame($expectedName, Parser::getCharTypeName($type));
+    }
+
+    function provideCharTypes()
+    {
+        return [
+            // type, expectedName
+            [Parser::C_NONE, 'C_NONE'],
+            [Parser::C_WS, 'C_WS'],
+            [Parser::C_NUM, 'C_NUM'],
+            [Parser::C_STR, 'C_STR'],
+            [Parser::C_CTRL, 'C_CTRL'],
+            [Parser::C_SPECIAL, 'C_SPECIAL'],
+        ];
+    }
+
+    function testShouldThrowExceptionOnUnknownCharType()
+    {
+        $this->expectException(UnknownCharacterTypeException::class);
+
+        Parser::getCharTypeName(12345);
+    }
+
+    private function createParser(string $input = '', bool $trackLineNumber = true): Parser
+    {
+        return new Parser($input, $trackLineNumber);
     }
 
     /**
      * Assert that result of some operation on the parser matches the expected outcome
      */
-    protected function assertParserMethodOutcome(
+    private function assertParserMethodOutcome(
         Parser $parser,
         $actualResult,
         $expectedResult,
@@ -797,17 +831,17 @@ abstract class ParserTest extends TestCase
      * @param string|null $expectedChar
      * @param string|null $expectedLastChar
      * @param int|null    $expectedLine
-     * @param int         $expectedOffset
+     * @param int         $expectedPosition
      * @param bool        $expectedAtNewline
      * @param bool        $expectedEnd
      * @param array|null  $expectedVars
      */
-    protected function assertParserState(
+    private function assertParserState(
         Parser $parser,
         ?string $expectedChar,
         ?string $expectedLastChar,
         ?int $expectedLine,
-        int $expectedOffset,
+        int $expectedPosition,
         bool $expectedAtNewline,
         bool $expectedEnd,
         ?array $expectedVars = null
@@ -828,9 +862,9 @@ abstract class ParserTest extends TestCase
             sprintf('Expected current line to be %d', $expectedLine)
         );
         $this->assertSame(
-            $expectedOffset,
+            $expectedPosition,
             $parser->i,
-            sprintf('Expected current offset to be %d', $expectedOffset)
+            sprintf('Expected current position to be %d', $expectedPosition)
         );
         $this->assertSame(
             $expectedAtNewline,
@@ -848,12 +882,12 @@ abstract class ParserTest extends TestCase
         }
     }
 
-    protected function expectParseException(string $class, string $message, int $expectedOffset, ?int $expectedLine = null): void
+    private function expectParseException(string $class, string $message, int $expectedPosition, ?int $expectedLine = null): void
     {
         $this->expectedParseException = [
             'class' => $class,
             'message' => $message,
-            'offset' => $expectedOffset,
+            'position' => $expectedPosition,
             'line' => $expectedLine,
         ];
     }
@@ -868,7 +902,7 @@ abstract class ParserTest extends TestCase
                 // check expected parse exception
                 $this->assertThat($e, new ExceptionConstraint($this->expectedParseException['class']));
                 $this->assertThat($e, new ExceptionMessage($this->expectedParseException['message']));
-                $this->assertSame($this->expectedParseException['offset'], $e->getParserOffset());
+                $this->assertSame($this->expectedParseException['position'], $e->getParserPosition());
                 $this->assertSame($this->expectedParseException['line'], $e->getParserLine());
             } else {
                 throw $e;

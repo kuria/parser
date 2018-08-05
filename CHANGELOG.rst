@@ -1,6 +1,15 @@
 Changelog
 #########
 
+4.0.0
+*****
+
+- simplified ``Parser`` internals
+- reworked character types
+- removed input abstraction
+- fixed backward seeking issues caused by PHP 7.1's negative string offsets feature
+
+
 3.0.0
 *****
 

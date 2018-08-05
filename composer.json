@@ -1,7 +1,7 @@
 {
     "name": "kuria/parser",
     "description": "Character-by-character string parsing library",
-    "keywords": ["parser", "lexer", "character-by-character"],
+    "keywords": ["parser", "character-by-character"],
     "license": "MIT",
     "require": {
         "php": ">=7.1"

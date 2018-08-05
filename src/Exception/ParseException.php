@@ -5,28 +5,28 @@ namespace Kuria\Parser\Exception;
 abstract class ParseException extends \Exception implements ExceptionInterface
 {
     /** @var int */
-    private $parserOffset;
+    private $parserPosition;
 
     /** @var int|null */
     private $parserLine;
 
-    function __construct(string $message, int $parserOffset, ?int $parserLine = null, ?\Throwable $previous = null)
+    function __construct(string $message, int $parserPosition, ?int $parserLine = null, ?\Throwable $previous = null)
     {
         // extend message
         if ($parserLine !== null) {
             $message .= ' on line ' . $parserLine;
         }
-        $message .= ' (at offset ' . $parserOffset . ')';
+        $message .= ' (at position ' . $parserPosition . ')';
 
         parent::__construct($message, 0, $previous);
 
+        $this->parserPosition = $parserPosition;
         $this->parserLine = $parserLine;
-        $this->parserOffset = $parserOffset;
     }
 
-    function getParserOffset(): int
+    function getParserPosition(): int
     {
-        return $this->parserOffset;
+        return $this->parserPosition;
     }
 
     function getParserLine(): ?int
