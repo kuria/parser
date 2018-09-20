@@ -2,9 +2,9 @@
 
 namespace Kuria\Parser\Exception;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class ParseExceptionTest extends TestCase
+class ParseExceptionTest extends Test
 {
     /**
      * @dataProvider provideParseExceptions

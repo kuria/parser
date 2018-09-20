@@ -2,6 +2,7 @@
 
 namespace Kuria\Parser;
 
+use Kuria\DevMeta\Test;
 use Kuria\Parser\Exception\NoActiveStatesException;
 use Kuria\Parser\Exception\OutOfBoundariesException;
 use Kuria\Parser\Exception\ParseException;
@@ -11,9 +12,8 @@ use Kuria\Parser\Exception\UnexpectedEndException;
 use Kuria\Parser\Exception\UnknownCharacterTypeException;
 use PHPUnit\Framework\Constraint\Exception as ExceptionConstraint;
 use PHPUnit\Framework\Constraint\ExceptionMessage;
-use PHPUnit\Framework\TestCase;
 
-class ParserTest extends TestCase
+class ParserTest extends Test
 {
     /** @var array|null */
     private $expectedParseException;
