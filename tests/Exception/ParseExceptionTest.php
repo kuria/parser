@@ -37,7 +37,7 @@ class ParseExceptionTest extends Test
         $this->assertSame($previousException, $exception->getPrevious());
     }
 
-    function provideParseExceptions(): array
+    function provideParseExceptions()
     {
         return [
             // className, arguments, expectedMessage, [expectedParserPosition], [expectedParserLine]

@@ -14,7 +14,7 @@ class ExceptionHelperTest extends Test
         $this->assertSame($expectedOutput, ExceptionHelper::formatItem($item, $quote));
     }
 
-    function provideItems(): array
+    function provideItems()
     {
         // item, quote, expectedOutput
         return [
@@ -35,7 +35,7 @@ class ExceptionHelperTest extends Test
         $this->assertSame($expectedOutput, ExceptionHelper::formatList($items, $quote));
     }
 
-    function provideLists(): array
+    function provideLists()
     {
         return [
             // items, quote, expectedOutput

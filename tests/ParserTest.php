@@ -464,7 +464,7 @@ class ParserTest extends Test
         $this->assertParserMethodOutcome($parser, $parser->eatType($type), $expectedOutput);
     }
 
-    function provideEatTypeSamples(): array
+    function provideEatTypeSamples()
     {
         return [
             // type, input, expectedOutput
@@ -588,7 +588,7 @@ class ParserTest extends Test
         $this->assertSame($expectedEol, $parser->detectEol());
     }
 
-    function provideEolSamples(): array
+    function provideEolSamples()
     {
         return [
             // input, expectedEol
