@@ -192,7 +192,7 @@ class Parser
     function is(int ...$types): bool
     {
         foreach ($types as $type) {
-            if (static::CHAR_TYPE_MAP[$this->char] === $type) {
+            if ($type === static::CHAR_TYPE_MAP[$this->char]) {
                 return true;
             }
         }
@@ -482,7 +482,7 @@ class Parser
         $consumed = '';
         while (!$this->end) {
             // check type
-            if (static::CHAR_TYPE_MAP[$this->char] !== $type) {
+            if ($type !== static::CHAR_TYPE_MAP[$this->char]) {
                 break;
             }
 
@@ -531,7 +531,7 @@ class Parser
         while (!$this->end) {
             // check type
             if (
-                static::C_WS !== static::CHAR_TYPE_MAP[$this->char]
+                static::CHAR_TYPE_MAP[$this->char] !== static::C_WS
                 || !$newlines && ($this->char === "\n" && $this->lastChar !== "\r" || $this->char === "\r")
             ) {
                 break;
@@ -794,7 +794,7 @@ class Parser
      */
     function expectCharType(int $expectedType): void
     {
-        if (static::CHAR_TYPE_MAP[$this->char] !== $expectedType) {
+        if ($expectedType !== static::CHAR_TYPE_MAP[$this->char]) {
             throw new UnexpectedCharacterTypeException(
                 $this->getCharTypeName(static::CHAR_TYPE_MAP[$this->char]),
                 [$this->getCharTypeName($expectedType)],
